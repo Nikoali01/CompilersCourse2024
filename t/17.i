@@ -1,0 +1,1 @@
+var result: integer is add(4, "abc");
