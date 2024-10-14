@@ -18,7 +18,7 @@ for i in 2..5 loop
   end;
 end;
 
-print(maxMark)
+print(maxMark);
 
 var minMark: integer is marks[1];
 for i in 2..5 loop
