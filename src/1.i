@@ -1,1 +1,0 @@
-result.real := c1.real + c2.real;

@@ -296,14 +296,27 @@ public class Parser {
         return new VarDeclarationNode(identifier.text, type, expression);
     }
 
-    private AssignmentNode parseAssignmentOrFunctionCall() {
+    private ASTNode parseAssignmentOrFunctionCall() {
         ASTNode lvalue = parseLValue();
         if (match(TokenType.ASSIGN)) {
             ASTNode expression = parseExpression();
             consume(TokenType.SEMICOLON, "Expected semicolon");
-            return new AssignmentNode(lvalue, expression);
+            return new AssignmentNode(lvalue, expression); // Return the assignment node
         }
-        throw new RuntimeException("Expected assignment");
+
+        if (match(TokenType.LPAREN)) {
+            // It's a function call
+            List<ASTNode> arguments = new ArrayList<>();
+            if (!check(TokenType.RPAREN)) {
+                do {
+                    arguments.add(parseExpression()); // Parse each argument
+                } while (match(TokenType.COMMA));
+            }
+            consume(TokenType.RPAREN, "Expected closing parenthesis");
+            consume(TokenType.SEMICOLON, "Expected semicolon after function call");
+            return new FunctionCallNode(((IdentifierNode) lvalue).name, arguments);
+        }
+        throw new RuntimeException("Expected assignment or function call");
     }
 
     private ASTNode parseLValue() {
@@ -492,7 +505,7 @@ public class Parser {
 
     private ASTNode parseFactor() {
         ASTNode left = parseUnary();
-        while (match(TokenType.STAR, TokenType.SLASH)) {
+        while (match(TokenType.STAR, TokenType.SLASH, TokenType.MOD)) {
             TokenType operator = previous().type;
             ASTNode right = parseUnary();
             left = new BinaryOperationNode(left, operator, right);
@@ -510,6 +523,7 @@ public class Parser {
     }
 
     private ASTNode parsePrimary() {
+        // Check for literals
         if (match(TokenType.NUMBER)) {
             return new LiteralNode(Double.parseDouble(previous().text));
         }
@@ -522,42 +536,66 @@ public class Parser {
         if (match(TokenType.FALSE)) {
             return new LiteralNode(false);
         }
+
+        // Handle identifiers
         if (match(TokenType.IDENTIFIER)) {
             String identifier = previous().text;
 
-            if (match(TokenType.LPAREN)) {  // Check if it's a function call
+            // Start with the base identifier
+            ASTNode base = new IdentifierNode(identifier);
+
+            // Handle property access (e.g., cube.vertices)
+            base = handlePropertyAccess(base);
+
+            // Handle array indexing (e.g., cube.vertices[i])
+            while (match(TokenType.LBRACKET)) {
+                ASTNode index = parseExpression(); // Parse the index expression
+                consume(TokenType.RBRACKET, "Expected closing bracket");
+                base = new LValueNode(base, null, index); // Create LValueNode for array access
+            }
+
+            // Handle further property access on the result of the previous expressions
+            base = handlePropertyAccess(base);
+
+            // Handle function calls
+            if (match(TokenType.LPAREN)) {
                 List<ASTNode> arguments = new ArrayList<>();
                 if (!check(TokenType.RPAREN)) {
                     do {
-                        arguments.add(parseExpression());
+                        arguments.add(parseExpression()); // Parse each argument
                     } while (match(TokenType.COMMA));
                 }
                 consume(TokenType.RPAREN, "Expected closing parenthesis");
-                return new FunctionCallNode(identifier, arguments);
+                return new FunctionCallNode(identifier, arguments); // Return the function call node
             }
 
-            // Handle array indexing
-            ASTNode base = new IdentifierNode(identifier);
-            while (match(TokenType.LBRACKET)) {
-                ASTNode index = parseExpression();  // Parse the index expression
-                consume(TokenType.RBRACKET, "Expected closing bracket");
-                base = new LValueNode(base, null, index);  // Create LValueNode for array access
-            }
-            return base;
+            return base; // Return the LValueNode (could be a property or an identifier)
         }
+
+        // Handle grouped expressions
         if (match(TokenType.LPAREN)) {
             ASTNode expression = parseExpression();
             consume(TokenType.RPAREN, "Expected ')'");
             return expression;
         }
+
         throw new RuntimeException("Expected expression");
+    }
+
+
+    // Method to handle property access
+    private ASTNode handlePropertyAccess(ASTNode base) {
+        while (match(TokenType.DOT)) { // Check for property access
+            String propertyName = consume(TokenType.IDENTIFIER, "Expected property name").text;
+            base = new LValueNode(base, propertyName, null); // Create a new LValueNode for property
+        }
+        return base;
     }
 
     private ASTNode parseArrayDeclaration(Token identifier) {
         consume(TokenType.LBRACKET, "Expected '['");
         Token sizeToken = consume(TokenType.NUMBER, "Expected array size");
         consume(TokenType.RBRACKET, "Expected ']'");
-        consume(TokenType.OF, "Expected 'of'");
         ASTNode type = parseType();  // Parse the type here after "of"
         consume(TokenType.SEMICOLON, "Expected semicolon");
         return new ArrayDeclarationNode(identifier.text, Integer.parseInt(sizeToken.text), type);

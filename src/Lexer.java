@@ -22,7 +22,6 @@ public class Lexer {
         // Operators and punctuation
         tokenPatterns.put(TokenType.PLUS, "\\+");
         tokenPatterns.put(TokenType.RANGE_OPERATOR, "\\.\\.");
-        tokenPatterns.put(TokenType.MOD, "%");
         tokenPatterns.put(TokenType.MINUS, "-");
         tokenPatterns.put(TokenType.STAR, "\\*");
         tokenPatterns.put(TokenType.SLASH, "/");
