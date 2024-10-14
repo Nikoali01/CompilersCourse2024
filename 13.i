@@ -1,6 +1,6 @@
 type IntArray is array [10] integer;
 
-routine mergeSort(arr : IntArray, start : integer, end : integer) is
+routine mergeSort(arr : IntArray, start : integer, finish : integer) is
     if start >= end then
         return;
     end;
@@ -10,7 +10,7 @@ routine mergeSort(arr : IntArray, start : integer, end : integer) is
     merge(arr, start, mid, end);
 end;
 
-routine merge(arr : IntArray, start : integer, mid : integer, end : integer) is
+routine merge(arr : IntArray, start : integer, mid : integer, finish : integer) is
     var left : IntArray;
     var right : IntArray;
     var i : integer is start;
