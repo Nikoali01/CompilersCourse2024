@@ -356,28 +356,37 @@ public class Parser {
 
 
     private RoutineDeclarationNode parseRoutineDeclaration() {
-        Token identifier = consume(TokenType.IDENTIFIER, "Expected identifier");
-        consume(TokenType.LPAREN, "Expected '('");
+        Token identifier = consume(TokenType.IDENTIFIER, "Expected identifier for routine");
+        consume(TokenType.LPAREN, "Expected '(' after routine name");
+
+        // Parse the parameters
         List<ParamNode> params = new ArrayList<>();
         if (!check(TokenType.RPAREN)) {
             do {
                 Token paramIdentifier = consume(TokenType.IDENTIFIER, "Expected parameter name");
-                consume(TokenType.COLON, "Expected ':'");
+                consume(TokenType.COLON, "Expected ':' after parameter name");
                 ASTNode type = parseType();
                 params.add(new ParamNode(paramIdentifier.text, type));
-            } while (match(TokenType.COMMA));
+            } while (match(TokenType.COMMA)); // Handle multiple parameters
         }
-        consume(TokenType.RPAREN, "Expected ')'");
+        consume(TokenType.RPAREN, "Expected ')' after parameters");
+
+        // Parse return type (if any)
         ASTNode returnType = null;
-        if (match(TokenType.RETURNS)) {
+        if (match(TokenType.COLON)) {
             returnType = parseType();
         }
-        consume(TokenType.IS, "Expected 'is'");
-        List<ASTNode> body = parseBlock();
-        consume(TokenType.END, "Expected 'end'");
-        consume(TokenType.SEMICOLON, "Expected semicolon");
+
+        // Parse body of the routine
+        consume(TokenType.IS, "Expected 'is' before routine body");
+        List<ASTNode> body = parseBlock();  // Routine body is a block of statements
+        consume(TokenType.END, "Expected 'end' after routine body");
+        consume(TokenType.SEMICOLON, "Expected semicolon after 'end'");
+
+        // Return the constructed RoutineDeclarationNode
         return new RoutineDeclarationNode(identifier.text, params, returnType, body);
     }
+
 
     private ReturnStatementNode parseReturnStatement() {
         ASTNode expression = null;

@@ -4,7 +4,7 @@ public class Main {
     public static void main(String[] args) {
         Lexer lexer = new Lexer();
         FileToString fileToString = new FileToString();
-        String inputFileContent = fileToString.getStringFromTheLink("/Users/emildavlityarov/CompilersCourse2024/LexicalSyntaxAnalyzer/src/12.i");
+        String inputFileContent = fileToString.getStringFromTheLink("/Users/andrey/study/compilers/CompilersCourse2024/src/1.i");
         List<Token> tokens = lexer.lex(inputFileContent);
         Parser parser = new Parser(tokens);
         ProgramNode program = parser.parse();
