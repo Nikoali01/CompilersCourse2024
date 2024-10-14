@@ -318,17 +318,20 @@ public class Parser {
         consume(TokenType.THEN, "Expected 'then'");
         List<ASTNode> thenStatements = parseBlock();
         List<ASTNode> elsifStatements = new ArrayList<>();
+
         while (match(TokenType.ELSIF)) {
             ASTNode elsifCondition = parseExpression();
             consume(TokenType.THEN, "Expected 'then'");
             elsifStatements.add(new IfStatementNode(elsifCondition, parseBlock(), null, null));
         }
+
         List<ASTNode> elseStatements = new ArrayList<>();
         if (match(TokenType.ELSE)) {
             elseStatements = parseBlock();
         }
         consume(TokenType.END, "Expected 'end'");
         consume(TokenType.SEMICOLON, "Expected semicolon");
+
         return new IfStatementNode(condition, thenStatements, elsifStatements, elseStatements);
     }
 
@@ -514,8 +517,21 @@ public class Parser {
             return new LiteralNode(false);
         }
         if (match(TokenType.IDENTIFIER)) {
-            // Check for array access right after identifier
-            ASTNode base = new IdentifierNode(previous().text);
+            String identifier = previous().text;
+
+            if (match(TokenType.LPAREN)) {  // Check if it's a function call
+                List<ASTNode> arguments = new ArrayList<>();
+                if (!check(TokenType.RPAREN)) {
+                    do {
+                        arguments.add(parseExpression());
+                    } while (match(TokenType.COMMA));
+                }
+                consume(TokenType.RPAREN, "Expected closing parenthesis");
+                return new FunctionCallNode(identifier, arguments);
+            }
+
+            // Handle array indexing
+            ASTNode base = new IdentifierNode(identifier);
             while (match(TokenType.LBRACKET)) {
                 ASTNode index = parseExpression();  // Parse the index expression
                 consume(TokenType.RBRACKET, "Expected closing bracket");

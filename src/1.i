@@ -1,4 +1,3 @@
-if isPrime(num) then
-        primes[count + 1] := num;
-        count := count + 1;
+routine add(a: integer, b: integer) : integer is
+  return a + b;
 end;
