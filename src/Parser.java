@@ -213,6 +213,7 @@ public class Parser {
     }
 
     private Token consume(TokenType type, String errorMessage) {
+        System.out.println(type);
         Token token = peek();
         if (token.type == type) {
             advance();
@@ -273,18 +274,25 @@ public class Parser {
     }
 
     private VarDeclarationNode parseVarDeclaration() {
+        // Ensure we have an identifier token
         Token identifier = consume(TokenType.IDENTIFIER, "Expected identifier");
-        ASTNode type = null;
 
+        ASTNode type = null;
+        // Check for a type declaration
         if (match(TokenType.COLON)) {
             type = parseType();
+            // Ensure type is valid
         }
 
         ASTNode expression = null;
+        // Check for an initialization expression
         if (match(TokenType.IS)) {
             expression = parseExpression();
         }
+        // Ensure we have a semicolon at the end
         consume(TokenType.SEMICOLON, "Expected semicolon");
+
+        // Return the constructed VarDeclarationNode
         return new VarDeclarationNode(identifier.text, type, expression);
     }
 
@@ -411,25 +419,14 @@ public class Parser {
         consume(TokenType.IS, "Expected 'is'");
 
         if (match(TokenType.RECORD)) {
-            List<VarDeclarationNode> fields = new ArrayList<>();
-            while (!check(TokenType.END)) {
-                fields.add(parseVarDeclaration());
-            }
-            consume(TokenType.END, "Expected 'end'");
-            consume(TokenType.SEMICOLON, "Expected semicolon");
-            return new RecordDeclarationNode(identifier.text, fields);
-
+            System.out.printf(identifier.text);
+            return parseRecordDeclaration(identifier);
         } else if (match(TokenType.ARRAY)) {
-            consume(TokenType.LBRACKET, "Expected '['");
-            Token sizeToken = consume(TokenType.NUMBER, "Expected array size");
-            consume(TokenType.RBRACKET, "Expected ']'");
-            consume(TokenType.OF, "Expected 'of'");
-            ASTNode type = parseType();  // Parse the type here after "of"
-            consume(TokenType.SEMICOLON, "Expected semicolon");
-            return new ArrayDeclarationNode(identifier.text, Integer.parseInt(sizeToken.text), type);
+            return parseArrayDeclaration(identifier);
         }
         throw new RuntimeException("Expected 'record' or 'array'");
     }
+
 
     private List<ASTNode> parseBlock() {
         List<ASTNode> statements = new ArrayList<>();
@@ -555,6 +552,28 @@ public class Parser {
         }
         throw new RuntimeException("Expected expression");
     }
+
+    private ASTNode parseArrayDeclaration(Token identifier) {
+        consume(TokenType.LBRACKET, "Expected '['");
+        Token sizeToken = consume(TokenType.NUMBER, "Expected array size");
+        consume(TokenType.RBRACKET, "Expected ']'");
+        consume(TokenType.OF, "Expected 'of'");
+        ASTNode type = parseType();  // Parse the type here after "of"
+        consume(TokenType.SEMICOLON, "Expected semicolon");
+        return new ArrayDeclarationNode(identifier.text, Integer.parseInt(sizeToken.text), type);
+    }
+
+    private ASTNode parseRecordDeclaration(Token identifier) {
+        List<VarDeclarationNode> fields = new ArrayList<>();
+        while (!check(TokenType.END)) {
+            advance();
+            fields.add(parseVarDeclaration());
+        }
+        consume(TokenType.END, "Expected 'end'");
+        consume(TokenType.SEMICOLON, "Expected semicolon");
+        return new RecordDeclarationNode(identifier.text, fields);
+    }
+
 
     private ASTNode parseType() {
         // Check for array type
