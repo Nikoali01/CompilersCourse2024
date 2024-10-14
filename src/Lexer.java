@@ -26,6 +26,7 @@ public class Lexer {
         tokenPatterns.put(TokenType.MINUS, "-");
         tokenPatterns.put(TokenType.STAR, "\\*");
         tokenPatterns.put(TokenType.SLASH, "/");
+        tokenPatterns.put(TokenType.MOD, "%");
         tokenPatterns.put(TokenType.ASSIGN, ":=");
         tokenPatterns.put(TokenType.EQUAL, "=");
         tokenPatterns.put(TokenType.NOT_EQUAL, "!=");
