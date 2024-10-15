@@ -1,3 +1,5 @@
+package tokens;
+
 public enum TokenType {
     // Single-character tokens
     PLUS, MINUS, STAR, SLASH, MOD, ASSIGN, EQUAL, NOT_EQUAL,

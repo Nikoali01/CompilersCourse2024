@@ -1,3 +1,7 @@
+import tokens.Span;
+import tokens.Token;
+import tokens.TokenType;
+
 import java.util.*;
 import java.util.regex.*;
 import java.nio.file.*;
@@ -8,18 +12,15 @@ public class Lexer {
     private static final Set<String> keywords = new HashSet<>();
 
     static {
-        // Keywords from the language
         keywords.addAll(Arrays.asList(
                 "var", "type", "routine", "is", "end", "record", "array", "while", "loop", "for", "to",
                 "if", "then", "else", "elsif", "true", "false", "print", "return", "in"
         ));
 
-        // Token patterns (regular expressions) for various tokens
         tokenPatterns.put(TokenType.STRING, "\"(\\\\.|[^\"\\\\])*\"");  // Strings
         tokenPatterns.put(TokenType.NUMBER, "\\d+(\\.\\d+)?");         // Numbers (integers and reals)
         tokenPatterns.put(TokenType.IDENTIFIER, "[a-zA-Z_][a-zA-Z0-9_]*"); // Identifiers
 
-        // Operators and punctuation
         tokenPatterns.put(TokenType.PLUS, "\\+");
         tokenPatterns.put(TokenType.RANGE_OPERATOR, "\\.\\.");
         tokenPatterns.put(TokenType.MINUS, "-");
@@ -42,15 +43,12 @@ public class Lexer {
         tokenPatterns.put(TokenType.COLON, ":");
         tokenPatterns.put(TokenType.SEMICOLON, ";");
 
-        // Logical operators
         tokenPatterns.put(TokenType.AND, "and");
         tokenPatterns.put(TokenType.OR, "or");
         tokenPatterns.put(TokenType.NOT, "not");
 
-        // Whitespace (ignored)
         tokenPatterns.put(TokenType.WHITESPACE, "\\s+");
 
-        // End of input and unknown token
         tokenPatterns.put(TokenType.EOF, "$");
         tokenPatterns.put(TokenType.UNKNOWN, ".");
     }
@@ -59,7 +57,6 @@ public class Lexer {
         List<Token> tokens = new ArrayList<>();
         StringBuilder tokenPatternBuilder = new StringBuilder();
 
-        // Build the regex pattern by combining all token patterns
         for (Map.Entry<TokenType, String> entry : tokenPatterns.entrySet()) {
             tokenPatternBuilder.append(String.format("|(%s)", entry.getValue()));
         }
@@ -83,12 +80,10 @@ public class Lexer {
                 }
             }
 
-            // Check if the matched text is a keyword
             if (type == TokenType.IDENTIFIER && keywords.contains(matchedText)) {
                 type = TokenType.valueOf(matchedText.toUpperCase());
             }
 
-            // Ignore whitespace tokens
             if (type == TokenType.WHITESPACE) {
                 continue;
             }

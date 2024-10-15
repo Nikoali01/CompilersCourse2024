@@ -1,3 +1,5 @@
+package tokens;
+
 public class Span {
     long lineNum;
     int posBegin, posEnd;

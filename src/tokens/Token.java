@@ -1,8 +1,9 @@
-// Определение токенов
-class Token {
-    TokenType type;
+package tokens;
+
+public class Token {
+    public TokenType type;
     TokenType commonType;
-    String text;
+    public String text;
     Span span;
 
     public Token(Span span, TokenType type, String text) {
@@ -11,5 +12,3 @@ class Token {
         this.text = text;
     }
 }
-
-// Перечисление типов токено

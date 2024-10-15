@@ -1,208 +1,10 @@
-import java.util.List;
+import node.*;
+import tokens.Token;
+import tokens.TokenType;
+
 import java.util.ArrayList;
+import java.util.List;
 
-// Определение узлов для AST
-abstract class ASTNode {}
-
-class ProgramNode extends ASTNode {
-    List<ASTNode> statements;
-
-    ProgramNode(List<ASTNode> statements) {
-        this.statements = statements;
-    }
-}
-
-class VarDeclarationNode extends ASTNode {
-    String identifier;
-    ASTNode type;
-    ASTNode expression;
-
-    VarDeclarationNode(String identifier, ASTNode type, ASTNode expression) {
-        this.identifier = identifier;
-        this.type = type;
-        this.expression = expression;
-    }
-}
-
-class AssignmentNode extends ASTNode {
-    ASTNode lvalue;
-    ASTNode expression;
-
-    AssignmentNode(ASTNode lvalue, ASTNode expression) {
-        this.lvalue = lvalue;
-        this.expression = expression;
-    }
-}
-
-class IfStatementNode extends ASTNode {
-    ASTNode condition;
-    List<ASTNode> thenStatements;
-    List<ASTNode> elsifStatements;
-    List<ASTNode> elseStatements;
-
-    IfStatementNode(ASTNode condition, List<ASTNode> thenStatements, List<ASTNode> elsifStatements, List<ASTNode> elseStatements) {
-        this.condition = condition;
-        this.thenStatements = thenStatements;
-        this.elsifStatements = elsifStatements;
-        this.elseStatements = elseStatements;
-    }
-}
-
-class WhileLoopNode extends ASTNode {
-    ASTNode condition;
-    List<ASTNode> body;
-
-    WhileLoopNode(ASTNode condition, List<ASTNode> body) {
-        this.condition = condition;
-        this.body = body;
-    }
-}
-
-class ForLoopNode extends ASTNode {
-    String identifier;
-    ASTNode startExpression;
-    ASTNode endExpression;
-    List<ASTNode> body;
-
-    ForLoopNode(String identifier, ASTNode startExpression, ASTNode endExpression, List<ASTNode> body) {
-        this.identifier = identifier;
-        this.startExpression = startExpression;
-        this.endExpression = endExpression;
-        this.body = body;
-    }
-}
-
-class RoutineDeclarationNode extends ASTNode {
-    String identifier;
-    List<ParamNode> params;
-    ASTNode returnType;
-    List<ASTNode> body;
-
-    RoutineDeclarationNode(String identifier, List<ParamNode> params, ASTNode returnType, List<ASTNode> body) {
-        this.identifier = identifier;
-        this.params = params;
-        this.returnType = returnType;
-        this.body = body;
-    }
-}
-
-class ParamNode extends ASTNode {
-    String identifier;
-    ASTNode type;
-
-    ParamNode(String identifier, ASTNode type) {
-        this.identifier = identifier;
-        this.type = type;
-    }
-}
-
-class ReturnStatementNode extends ASTNode {
-    ASTNode expression;
-
-    ReturnStatementNode(ASTNode expression) {
-        this.expression = expression;
-    }
-}
-
-class PrintStatementNode extends ASTNode {
-    ASTNode expression;
-
-    PrintStatementNode(ASTNode expression) {
-        this.expression = expression;
-    }
-}
-
-class RecordDeclarationNode extends ASTNode {
-    String identifier;
-    List<VarDeclarationNode> fields;
-
-    RecordDeclarationNode(String identifier, List<VarDeclarationNode> fields) {
-        this.identifier = identifier;
-        this.fields = fields;
-    }
-}
-
-class ArrayDeclarationNode extends ASTNode {
-    String identifier;
-    int size;
-    ASTNode type;
-
-    ArrayDeclarationNode(String identifier, int size, ASTNode type) {
-        this.identifier = identifier;
-        this.size = size;
-        this.type = type;
-    }
-}
-
-class FunctionCallNode extends ASTNode {
-    String identifier;
-    List<ASTNode> arguments;
-
-    FunctionCallNode(String identifier, List<ASTNode> arguments) {
-        this.identifier = identifier;
-        this.arguments = arguments;
-    }
-}
-
-class TypeNode extends ASTNode {
-    String typeName;
-
-    TypeNode(String typeName) {
-        this.typeName = typeName;
-    }
-}
-
-class BinaryOperationNode extends ASTNode {
-    ASTNode left;
-    TokenType operator;
-    ASTNode right;
-
-    BinaryOperationNode(ASTNode left, TokenType operator, ASTNode right) {
-        this.left = left;
-        this.operator = operator;
-        this.right = right;
-    }
-}
-
-class UnaryOperationNode extends ASTNode {
-    TokenType operator;
-    ASTNode operand;
-
-    UnaryOperationNode(TokenType operator, ASTNode operand) {
-        this.operator = operator;
-        this.operand = operand;
-    }
-}
-
-class LiteralNode extends ASTNode {
-    Object value;
-
-    LiteralNode(Object value) {
-        this.value = value;
-    }
-}
-
-class IdentifierNode extends ASTNode {
-    String name;
-
-    IdentifierNode(String name) {
-        this.name = name;
-    }
-}
-
-class LValueNode extends ASTNode {
-    ASTNode base;
-    String field;
-    ASTNode index;
-
-    LValueNode(ASTNode base, String field, ASTNode index) {
-        this.base = base;
-        this.field = field;
-        this.index = index;
-    }
-}
-
-// Парсер
 public class Parser {
     private List<Token> tokens;
     private int current;
@@ -289,10 +91,7 @@ public class Parser {
         if (match(TokenType.IS)) {
             expression = parseExpression();
         }
-        // Ensure we have a semicolon at the end
         consume(TokenType.SEMICOLON, "Expected semicolon");
-
-        // Return the constructed VarDeclarationNode
         return new VarDeclarationNode(identifier.text, type, expression);
     }
 
@@ -547,32 +346,28 @@ public class Parser {
             // Handle property access (e.g., cube.vertices)
             base = handlePropertyAccess(base);
 
-            // Handle array indexing (e.g., cube.vertices[i])
             while (match(TokenType.LBRACKET)) {
-                ASTNode index = parseExpression(); // Parse the index expression
+                ASTNode index = parseExpression();
                 consume(TokenType.RBRACKET, "Expected closing bracket");
-                base = new LValueNode(base, null, index); // Create LValueNode for array access
+                base = new LValueNode(base, null, index);
             }
 
-            // Handle further property access on the result of the previous expressions
             base = handlePropertyAccess(base);
 
-            // Handle function calls
             if (match(TokenType.LPAREN)) {
                 List<ASTNode> arguments = new ArrayList<>();
                 if (!check(TokenType.RPAREN)) {
                     do {
-                        arguments.add(parseExpression()); // Parse each argument
+                        arguments.add(parseExpression());
                     } while (match(TokenType.COMMA));
                 }
                 consume(TokenType.RPAREN, "Expected closing parenthesis");
-                return new FunctionCallNode(identifier, arguments); // Return the function call node
+                return new FunctionCallNode(identifier, arguments);
             }
 
-            return base; // Return the LValueNode (could be a property or an identifier)
+            return base;
         }
 
-        // Handle grouped expressions
         if (match(TokenType.LPAREN)) {
             ASTNode expression = parseExpression();
             consume(TokenType.RPAREN, "Expected ')'");
@@ -583,9 +378,8 @@ public class Parser {
     }
 
 
-    // Method to handle property access
     private ASTNode handlePropertyAccess(ASTNode base) {
-        while (match(TokenType.DOT)) { // Check for property access
+        while (match(TokenType.DOT)) {
             String propertyName = consume(TokenType.IDENTIFIER, "Expected property name").text;
             base = new LValueNode(base, propertyName, null); // Create a new LValueNode for property
         }
@@ -596,7 +390,7 @@ public class Parser {
         consume(TokenType.LBRACKET, "Expected '['");
         Token sizeToken = consume(TokenType.NUMBER, "Expected array size");
         consume(TokenType.RBRACKET, "Expected ']'");
-        ASTNode type = parseType();  // Parse the type here after "of"
+        ASTNode type = parseType();
         consume(TokenType.SEMICOLON, "Expected semicolon");
         return new ArrayDeclarationNode(identifier.text, Integer.parseInt(sizeToken.text), type);
     }
@@ -619,14 +413,10 @@ public class Parser {
             consume(TokenType.LBRACKET, "Expected '['");
             Token sizeToken = consume(TokenType.NUMBER, "Expected array size");
             consume(TokenType.RBRACKET, "Expected ']'");
-//            consume(TokenType.OF, "Expected 'of'");
             Token typeName = consume(TokenType.IDENTIFIER, "Expected type name");
-
-            // Return an ArrayTypeNode that contains the size and type
             return new ArrayTypeNode(typeName.text, Integer.parseInt(sizeToken.text));
         }
 
-        // For other types, we expect an identifier
         Token typeName = consume(TokenType.IDENTIFIER, "Expected type name");
         return new TypeNode(typeName.text);
     }
