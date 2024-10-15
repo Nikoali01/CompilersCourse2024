@@ -76,18 +76,14 @@ public class Parser {
     }
 
     private VarDeclarationNode parseVarDeclaration() {
-        // Ensure we have an identifier token
         Token identifier = consume(TokenType.IDENTIFIER, "Expected identifier");
 
         ASTNode type = null;
-        // Check for a type declaration
         if (match(TokenType.COLON)) {
             type = parseType();
-            // Ensure type is valid
         }
 
         ASTNode expression = null;
-        // Check for an initialization expression
         if (match(TokenType.IS)) {
             expression = parseExpression();
         }
@@ -100,15 +96,14 @@ public class Parser {
         if (match(TokenType.ASSIGN)) {
             ASTNode expression = parseExpression();
             consume(TokenType.SEMICOLON, "Expected semicolon");
-            return new AssignmentNode(lvalue, expression); // Return the assignment node
+            return new AssignmentNode(lvalue, expression);
         }
 
         if (match(TokenType.LPAREN)) {
-            // It's a function call
             List<ASTNode> arguments = new ArrayList<>();
             if (!check(TokenType.RPAREN)) {
                 do {
-                    arguments.add(parseExpression()); // Parse each argument
+                    arguments.add(parseExpression());
                 } while (match(TokenType.COMMA));
             }
             consume(TokenType.RPAREN, "Expected closing parenthesis");
@@ -124,7 +119,7 @@ public class Parser {
             if (previous().type == TokenType.DOT) {
                 base = new LValueNode(base, consume(TokenType.IDENTIFIER, "Expected field").text, null);
             } else {
-                ASTNode index = parseExpression(); // Ensure this parses the expression correctly
+                ASTNode index = parseExpression();
                 consume(TokenType.RBRACKET, "Expected closing bracket");
                 base = new LValueNode(base, null, index);
             }
@@ -166,9 +161,9 @@ public class Parser {
 
     private ForLoopNode parseForLoop() {
         Token identifier = consume(TokenType.IDENTIFIER, "Expected identifier");
-        consume(TokenType.IN, "Expected 'in'");  // Ожидаем 'in'
+        consume(TokenType.IN, "Expected 'in'");
         ASTNode startExpression = parseExpression();
-        consume(TokenType.RANGE_OPERATOR, "Expected '..'");  // Ожидаем диапазон '..'
+        consume(TokenType.RANGE_OPERATOR, "Expected '..'");
         ASTNode endExpression = parseExpression();
         consume(TokenType.LOOP, "Expected 'loop'");
         List<ASTNode> body = parseBlock();
@@ -182,7 +177,6 @@ public class Parser {
         Token identifier = consume(TokenType.IDENTIFIER, "Expected identifier for routine");
         consume(TokenType.LPAREN, "Expected '(' after routine name");
 
-        // Parse the parameters
         List<ParamNode> params = new ArrayList<>();
         if (!check(TokenType.RPAREN)) {
             do {
@@ -190,23 +184,19 @@ public class Parser {
                 consume(TokenType.COLON, "Expected ':' after parameter name");
                 ASTNode type = parseType();
                 params.add(new ParamNode(paramIdentifier.text, type));
-            } while (match(TokenType.COMMA)); // Handle multiple parameters
+            } while (match(TokenType.COMMA));
         }
         consume(TokenType.RPAREN, "Expected ')' after parameters");
 
-        // Parse return type (if any)
         ASTNode returnType = null;
         if (match(TokenType.COLON)) {
             returnType = parseType();
         }
 
-        // Parse body of the routine
         consume(TokenType.IS, "Expected 'is' before routine body");
-        List<ASTNode> body = parseBlock();  // Routine body is a block of statements
+        List<ASTNode> body = parseBlock();
         consume(TokenType.END, "Expected 'end' after routine body");
         consume(TokenType.SEMICOLON, "Expected semicolon after 'end'");
-
-        // Return the constructed RoutineDeclarationNode
         return new RoutineDeclarationNode(identifier.text, params, returnType, body);
     }
 
@@ -322,7 +312,6 @@ public class Parser {
     }
 
     private ASTNode parsePrimary() {
-        // Check for literals
         if (match(TokenType.NUMBER)) {
             return new LiteralNode(Double.parseDouble(previous().text));
         }
@@ -336,14 +325,11 @@ public class Parser {
             return new LiteralNode(false);
         }
 
-        // Handle identifiers
         if (match(TokenType.IDENTIFIER)) {
             String identifier = previous().text;
 
-            // Start with the base identifier
             ASTNode base = new IdentifierNode(identifier);
 
-            // Handle property access (e.g., cube.vertices)
             base = handlePropertyAccess(base);
 
             while (match(TokenType.LBRACKET)) {
@@ -381,7 +367,7 @@ public class Parser {
     private ASTNode handlePropertyAccess(ASTNode base) {
         while (match(TokenType.DOT)) {
             String propertyName = consume(TokenType.IDENTIFIER, "Expected property name").text;
-            base = new LValueNode(base, propertyName, null); // Create a new LValueNode for property
+            base = new LValueNode(base, propertyName, null);
         }
         return base;
     }
@@ -408,7 +394,6 @@ public class Parser {
 
 
     private ASTNode parseType() {
-        // Check for array type
         if (match(TokenType.ARRAY)) {
             consume(TokenType.LBRACKET, "Expected '['");
             Token sizeToken = consume(TokenType.NUMBER, "Expected array size");
