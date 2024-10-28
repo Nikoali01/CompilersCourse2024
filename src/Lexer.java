@@ -43,9 +43,9 @@ public class Lexer {
         tokenPatterns.put(TokenType.COLON, ":");
         tokenPatterns.put(TokenType.SEMICOLON, ";");
 
-        tokenPatterns.put(TokenType.AND, "and");
-        tokenPatterns.put(TokenType.OR, "or");
-        tokenPatterns.put(TokenType.NOT, "not");
+        tokenPatterns.put(TokenType.AND, "\\&\\&");
+        tokenPatterns.put(TokenType.OR, "\\|\\|");
+        tokenPatterns.put(TokenType.NOT, "\\!");
 
         tokenPatterns.put(TokenType.WHITESPACE, "\\s+");
 
