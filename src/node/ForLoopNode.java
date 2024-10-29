@@ -6,7 +6,7 @@ public class ForLoopNode extends ASTNode {
     String identifier;
     ASTNode startExpression;
     ASTNode endExpression;
-    List<ASTNode> body;
+    public List<ASTNode> body;
 
     public ForLoopNode(String identifier, ASTNode startExpression, ASTNode endExpression, List<ASTNode> body) {
         this.identifier = identifier;
