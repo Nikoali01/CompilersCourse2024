@@ -1,8 +1,8 @@
 package node;
 
 public class AssignmentNode extends ASTNode {
-    ASTNode lvalue;
-    ASTNode expression;
+    public ASTNode lvalue;
+    public ASTNode expression;
 
     public AssignmentNode(ASTNode lvalue, ASTNode expression) {
         this.lvalue = lvalue;

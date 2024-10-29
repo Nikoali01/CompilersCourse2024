@@ -6,7 +6,7 @@ public class RoutineDeclarationNode extends ASTNode {
     String identifier;
     List<ParamNode> params;
     ASTNode returnType;
-    List<ASTNode> body;
+    public List<ASTNode> body;
 
     public RoutineDeclarationNode(String identifier, List<ParamNode> params, ASTNode returnType, List<ASTNode> body) {
         this.identifier = identifier;
