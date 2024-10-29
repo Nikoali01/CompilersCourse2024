@@ -1,11 +1,14 @@
-routine main(n: integer) : integer is
-    var myVar : integer;
-    myVar := 10;
-    print(efw);
-    return myVar;
-end;
+routine main() : integer is
+    var x : integer;
+    x := 10;
 
-routine mainError() : integer is
-    main(a);
-    return -1;
+    if x > 5 && x < 10 then
+        var y : integer;
+        y := x + 5; 
+        print(z);
+    else
+        print(x);
+    end;
+
+    return x;
 end;
