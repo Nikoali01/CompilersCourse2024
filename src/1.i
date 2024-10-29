@@ -1,9 +1,11 @@
-if a > 1 && a != 0 then
-    a := 2 + 3;
-elsif a < -1 then
-    a := -2;
-elsif a = 0 then
-    a := 0;
-else
-    a := -100;
+routine main(n: integer) : integer is
+    var myVar : integer;
+    myVar := 10;
+    print(efw);
+    return myVar;
+end;
+
+routine mainError() : integer is
+    main(a);
+    return -1;
 end;

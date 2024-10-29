@@ -3,7 +3,7 @@ package node;
 import java.util.List;
 
 public class RoutineDeclarationNode extends ASTNode {
-    String identifier;
+    public String identifier;
     List<ParamNode> params;
     ASTNode returnType;
     public List<ASTNode> body;

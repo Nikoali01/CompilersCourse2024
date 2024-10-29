@@ -1,5 +1,7 @@
 import node.ProgramNode;
 import optimization.ASTOptimizer;
+import semantic.DeclarationChecker;
+import semantic.KeyWordUsageChecker;
 import tokens.Token;
 
 import java.util.List;
@@ -15,6 +17,10 @@ public class Main {
 
         ASTOptimizer optimizer = new ASTOptimizer();
         program = optimizer.optimize(program);
+        KeyWordUsageChecker keyWordUsageChecker = new KeyWordUsageChecker();
+        DeclarationChecker declarationChecker = new DeclarationChecker();
+        keyWordUsageChecker.check(program);
+        declarationChecker.checkDeclarations(program);
         System.out.println(program);
 
     }
