@@ -31,6 +31,29 @@ public class ConstantExpressionSimplifier {
             varDecl.expression = simplify(varDecl.expression);
         } else if (node instanceof AssignmentNode assignment) {
             assignment.expression = simplify(assignment.expression);
+        } else if (node instanceof IfStatementNode ifStatement) {
+            ifStatement.condition = simplify(ifStatement.condition);
+            if (ifStatement.thenStatements != null) {
+                ifStatement.thenStatements.replaceAll(this::simplify);
+            }
+            if (ifStatement.elseStatements != null) {
+                ifStatement.elseStatements.replaceAll(this::simplify);
+            }
+            if (ifStatement.elsifStatements != null) {
+                ifStatement.elsifStatements.replaceAll(this::simplify);
+            }
+        } else if (node instanceof ForLoopNode forLoopNode) {
+            if (forLoopNode.body != null) {
+                forLoopNode.body.replaceAll(this::simplify);
+            }
+        } else if (node instanceof WhileLoopNode whileLoopNode) {
+            if (whileLoopNode.body != null) {
+                whileLoopNode.body.replaceAll(this::simplify);
+            }
+        } else if (node instanceof RoutineDeclarationNode routineDeclaration) {
+            if (routineDeclaration.body != null) {
+                routineDeclaration.body.replaceAll(this::simplify);
+            }
         }
         return node;
     }
