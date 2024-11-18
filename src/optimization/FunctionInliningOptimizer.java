@@ -31,6 +31,8 @@ public class FunctionInliningOptimizer {
                     return new PrintStatementNode(printNode.expression);
                 }
             }
+        } else if (node instanceof PrintStatementNode printNode) {
+            return new PrintStatementNode(inlineFunctionCalls(printNode.expression));
         }
         return node;
     }

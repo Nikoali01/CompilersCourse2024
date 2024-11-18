@@ -3,9 +3,9 @@ package node;
 import java.util.List;
 
 public class ForLoopNode extends ASTNode {
-    String identifier;
-    ASTNode startExpression;
-    ASTNode endExpression;
+    public String identifier;
+    public ASTNode startExpression;
+    public ASTNode endExpression;
     public List<ASTNode> body;
 
     public ForLoopNode(String identifier, ASTNode startExpression, ASTNode endExpression, List<ASTNode> body) {

@@ -2,7 +2,7 @@ package node;
 
 public class VarDeclarationNode extends ASTNode {
     public String identifier;
-    ASTNode type;
+    public ASTNode type;
     public ASTNode expression;
 
     public VarDeclarationNode(String identifier, ASTNode type, ASTNode expression) {

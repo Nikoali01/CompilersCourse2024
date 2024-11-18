@@ -64,17 +64,20 @@ public class DeclarationChecker {
         exitCurrentScope();
 
         for (ASTNode elsifStatement : ifStatement.elsifStatements) {
+            enterNewScope();
             checkDeclaration(elsifStatement);
             exitCurrentScope();
         }
 
         if (ifStatement.elseStatements != null) {
+            enterNewScope();
             checkRoutineBody(ifStatement.elseStatements);
             exitCurrentScope();
         }
     }
 
     private void checkWhileLoop(WhileLoopNode whileLoop) {
+        enterNewScope();
         checkDeclaration(whileLoop.condition); // Check the loop condition
         checkRoutineBody(whileLoop.body); // Check the loop body
         exitCurrentScope(); // Exit the scope for the while loop
