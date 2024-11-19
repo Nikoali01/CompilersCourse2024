@@ -1,6 +1,7 @@
 import node.*;
 import tokens.TokenType;
 
+import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -48,6 +49,10 @@ public class JasminCodeGenerator {
             generateBinaryOperation(binaryNode);
         } else if (node instanceof IfStatementNode ifNode) {
             generateIfStatement(ifNode);
+        } else if (node instanceof ForLoopNode forLoopNode) {
+            generateForLoop(forLoopNode);
+        } else if (node instanceof WhileLoopNode whileLoopNode) {
+            generateWhileLoop(whileLoopNode);
         } else {
             throw new UnsupportedOperationException("Unsupported ASTNode: " + node.getClass().getSimpleName());
         }
@@ -64,26 +69,33 @@ public class JasminCodeGenerator {
         // Generate the conditional jump based on the operator in the condition
         switch (binaryOperationNode.operator) {
             case GREATER -> {
-                jasminCode.append("ifgt ").append(elseLabel).append("\n"); // Jump to elseLabel if condition is false
+                jasminCode.append("iflt ").append(elseLabel).append("\n"); // Jump to elseLabel if condition is false
             }
             case LESS -> {
-                jasminCode.append("iflt ").append(elseLabel).append("\n"); // Jump to elseLabel if condition is false
+                jasminCode.append("ifgt ").append(elseLabel).append("\n"); // Jump to elseLabel if condition is false
             }
             case EQUAL -> {
                 jasminCode.append("ifeq ").append(elseLabel).append("\n"); // Jump to elseLabel if condition is false
             }
-            default -> throw new UnsupportedOperationException("Unsupported operator in condition: " + binaryOperationNode.operator);
+            default ->
+                    throw new UnsupportedOperationException("Unsupported operator in condition: " + binaryOperationNode.operator);
         }
 
         // Generate the then block (if condition is true)
-        generateStatement(node.thenStatements.getFirst());  // This processes the statements in the "then" block
+        for (int i = 0; i < node.thenStatements.size(); i++) {
+            generateStatement(node.thenStatements.get(i));
+        }
+//        generateStatement(node.thenStatements.getFirst());  // This processes the statements in the "then" block
 
         // Jump to the end of the if block (skip the else block)
         jasminCode.append("goto ").append(endLabel).append("\n");
 
         // Generate the else block (if condition is false)
         jasminCode.append(elseLabel).append(":\n");
-        generateStatement(node.elseStatements.getFirst());  // This processes the statements in the "else" block
+        for (int i = 0; i < node.elseStatements.size(); i++) {
+            generateStatement(node.elseStatements.get(i));
+        }
+//        generateStatement(node.elseStatements.getFirst());  // This processes the statements in the "else" block
 
         // Add the end label to mark the end of the if block
         jasminCode.append(endLabel).append(":\n");
@@ -97,25 +109,25 @@ public class JasminCodeGenerator {
         generateStatement(node.left);
 
         // If the left operand is an integer, convert it to double immediately after loading
-        if (node.left instanceof LiteralNode left && left.value instanceof Integer) {
-            jasminCode.append("i2d\n");  // Convert left operand to double if it's an integer literal
-        } else if (node.left instanceof IdentifierNode leftIdentifier) {
-            String varName = leftIdentifier.name;
-            if (symbolTable.containsKey(varName) && symbolTable.get(varName).type.equals("integer")) {
-                jasminCode.append("i2d\n");  // Convert left operand to double if it's an integer variable
-            }
-        } // Process the left operand (could be an identifier, literal, etc.)
+//        if (node.left instanceof LiteralNode left && left.value instanceof Integer) {
+//            jasminCode.append("i2d\n");  // Convert left operand to double if it's an integer literal
+//        } else if (node.left instanceof IdentifierNode leftIdentifier) {
+//            String varName = leftIdentifier.name;
+//            if (symbolTable.containsKey(varName) && symbolTable.get(varName).type.equals("integer")) {
+//                jasminCode.append("i2d\n");  // Convert left operand to double if it's an integer variable
+//            }
+//        } // Process the left operand (could be an identifier, literal, etc.)
         generateStatement(node.right);
-
-        // If the right operand is an integer, convert it to double immediately after loading
-        if (node.right instanceof LiteralNode right && right.value instanceof Integer) {
-            jasminCode.append("i2d\n");  // Convert right operand to double if it's an integer literal
-        } else if (node.right instanceof IdentifierNode rightIdentifier) {
-            String varName = rightIdentifier.name;
-            if (symbolTable.containsKey(varName) && symbolTable.get(varName).type.equals("integer")) {
-                jasminCode.append("i2d\n");  // Convert right operand to double if it's an integer variable
-            }
-        }// Process the right operand (could be an identifier, literal, etc.)
+//
+//        // If the right operand is an integer, convert it to double immediately after loading
+//        if (node.right instanceof LiteralNode right && right.value instanceof Integer) {
+//            jasminCode.append("i2d\n");  // Convert right operand to double if it's an integer literal
+//        } else if (node.right instanceof IdentifierNode rightIdentifier) {
+//            String varName = rightIdentifier.name;
+//            if (symbolTable.containsKey(varName) && symbolTable.get(varName).type.equals("integer")) {
+//                jasminCode.append("i2d\n");  // Convert right operand to double if it's an integer variable
+//            }
+//        }// Process the right operand (could be an identifier, literal, etc.)
 
         boolean isDouble = false;
 
@@ -212,7 +224,8 @@ public class JasminCodeGenerator {
                     case "string":
                         jasminCode.append("astore ").append(varInfo.index).append("\n");
                         break;
-                    case "integer" : jasminCode.append("istore ").append(varInfo.index).append("\n");
+                    case "integer":
+                        jasminCode.append("istore ").append(varInfo.index).append("\n");
                         break;
                     default:
                         throw new UnsupportedOperationException("Unsupported variable type: " + varInfo.type);
@@ -221,19 +234,33 @@ public class JasminCodeGenerator {
         }
     }
 
+//    private void generatePrint(PrintStatementNode node) {
+//        generateStatement(node.expression);
+//        if (node.expression instanceof LiteralNode literalNode) {
+//            if (literalNode.value instanceof Integer) {
+//                jasminCode.append("getstatic java/lang/System/out Ljava/io/PrintStream;\n");
+//                jasminCode.append("invokevirtual java/io/PrintStream/println(I)V\n");
+//            } else if (literalNode.value instanceof Double) {
+//                jasminCode.append("getstatic java/lang/System/out Ljava/io/PrintStream;\n");
+//                jasminCode.append("invokevirtual java/io/PrintStream/println(D)V\n");
+//            } else if (literalNode.value instanceof String) {
+//                jasminCode.append("getstatic java/lang/System/out Ljava/io/PrintStream;\n");
+//                jasminCode.append("invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
+//            }
+//        }
+//    }
+
     private void generatePrint(PrintStatementNode node) {
+        jasminCode.append("getstatic java/lang/System/out Ljava/io/PrintStream;\n");
         generateStatement(node.expression);
-        if (node.expression instanceof LiteralNode literalNode) {
-            if (literalNode.value instanceof Integer) {
-                jasminCode.append("getstatic java/lang/System/out Ljava/io/PrintStream;\n");
-                jasminCode.append("invokevirtual java/io/PrintStream/println(I)V\n");
-            } else if (literalNode.value instanceof Double) {
-                jasminCode.append("getstatic java/lang/System/out Ljava/io/PrintStream;\n");
-                jasminCode.append("invokevirtual java/io/PrintStream/println(D)V\n");
-            } else if (literalNode.value instanceof String) {
-                jasminCode.append("getstatic java/lang/System/out Ljava/io/PrintStream;\n");
-                jasminCode.append("invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
-            }
+        if (node.expression instanceof IdentifierNode identifierNode &&
+                symbolTable.get(identifierNode.name).type.equals("real")) {
+            jasminCode.append("invokevirtual java/io/PrintStream/println(D)V\n");
+        } else if (node.expression instanceof IdentifierNode identifierNode &&
+                symbolTable.get(identifierNode.name).type.equals("integer")) {
+            jasminCode.append("invokevirtual java/io/PrintStream/println(I)V\n");
+        } else {
+            jasminCode.append("invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
         }
     }
 
@@ -246,10 +273,112 @@ public class JasminCodeGenerator {
             } else if (varInfo.type.equals("string")) {
                 jasminCode.append("aload ").append(varInfo.index).append("\n");
             } else if (varInfo.type.equals("integer")) {
-                jasminCode.append("iload_").append(varInfo.index).append("\n");
+                jasminCode.append("iload ").append(varInfo.index).append("\n");
             } else {
                 throw new UnsupportedOperationException("Unsupported variable type: " + varInfo.type);
             }
         }
+    }
+
+    private void generateWhileLoop(WhileLoopNode node) {
+        String startLabel = generateUniqueLabel();
+        String endLabel = generateUniqueLabel();
+
+        // Начало цикла
+        jasminCode.append(startLabel).append(":\n");
+
+        // Генерация кода для условия
+        generateStatement(node.condition);
+
+        // Определяем, что возвращает условие
+        if (node.condition instanceof BinaryOperationNode conditionNode) {
+            boolean isDouble = isDoubleComparison(conditionNode);
+            switch (conditionNode.operator) {
+                case GREATER -> {
+                    jasminCode.append("iflt ").append(endLabel).append("\n");
+                }
+                case LESS -> {
+                    jasminCode.append("ifgt ").append(endLabel).append("\n");
+                }
+                case EQUAL -> {
+                    jasminCode.append("ifeq ").append(endLabel).append("\n");
+                }
+                default ->
+                        throw new UnsupportedOperationException("Unsupported operator in condition: " + conditionNode.operator);
+            }
+//            if (isDouble) {
+//                // Если условие сравнивает double, используем dcmpg и проверяем 0
+//                jasminCode.append("ifeq ").append(endLabel).append("\n");
+//            } else {
+//                // Если условие работает с integer, просто проверяем
+//                jasminCode.append("ifeq ").append(endLabel).append("\n");
+//            }
+        } else {
+            throw new UnsupportedOperationException("While loop condition must be a binary operation.");
+        }
+
+        // Генерация тела цикла
+        for (ASTNode statement : node.body) {
+            generateStatement(statement);
+        }
+
+        // Возврат к началу цикла
+        jasminCode.append("goto ").append(startLabel).append("\n");
+
+        // Метка конца цикла
+        jasminCode.append(endLabel).append(":\n");
+    }
+
+    // Вспомогательный метод для определения типа сравнения
+    private boolean isDoubleComparison(BinaryOperationNode node) {
+        return isDoubleType(node.left) || isDoubleType(node.right);
+    }
+
+    // Проверка, является ли выражение типа double
+    private boolean isDoubleType(ASTNode node) {
+        if (node instanceof LiteralNode literalNode) {
+            return literalNode.value instanceof Double;
+        } else if (node instanceof IdentifierNode identifierNode) {
+            String varName = identifierNode.name;
+            return symbolTable.containsKey(varName) && "real".equals(symbolTable.get(varName).type);
+        }
+        return false;
+    }
+
+
+    private void generateForLoop(ForLoopNode node) {
+        String startLabel = generateUniqueLabel();
+        String endLabel = generateUniqueLabel();
+
+        // Declare and initialize the loop variable
+        generateVarDeclaration(new VarDeclarationNode(
+                node.identifier,
+                new TypeNode("integer"),
+                node.startExpression
+        ));
+
+        // Start label for the loop
+        jasminCode.append(startLabel).append(":\n");
+
+        // Load the loop variable and the end value
+        jasminCode.append("iload ").append(symbolTable.get(node.identifier).index).append("\n");
+        generateStatement(node.endExpression);
+
+        // If loop variable exceeds end value, exit loop
+        jasminCode.append("if_icmpgt ").append(endLabel).append("\n");
+
+        // Generate body of the loop
+        for (ASTNode statement : node.body) {
+            generateStatement(statement);
+        }
+
+        // Increment the loop variable
+        jasminCode.append("iinc ").append(symbolTable.get(node.identifier).index).append(" 1\n");
+
+        // Jump back to the start of the loop
+        jasminCode.append("goto ").append(startLabel).append("\n");
+
+        // End label for the loop
+        jasminCode.append(endLabel).append(":\n");
     }
 }

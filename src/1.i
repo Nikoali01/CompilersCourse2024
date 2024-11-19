@@ -1,7 +1,8 @@
-var x : integer is 5;
-var y : integer is 10;
-x := x + 10.5;
-y := y / 2;
-y := y * 5;
-print(x);
-print(y);
+var temperature: real is 36.5;
+if temperature > 37.0 then
+  var status: string is "Fever";
+else
+  var status: string is "Normal";
+  print(status);
+end;
+print(temperature);

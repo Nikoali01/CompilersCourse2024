@@ -30,7 +30,7 @@ public class Main {
 
         Lexer lexer = new Lexer();
         FileToString fileToString = new FileToString();
-        String inputFileContent = fileToString.getStringFromTheLink("C:\\Users\\engli\\IdeaProjects\\CompilersCourse2024\\src\\1.i");
+        String inputFileContent = fileToString.getStringFromTheLink("/Users/andrey/study/compilers/CompilersCourse2024/src/1.i");
         List<Token> tokens = lexer.lex(inputFileContent);
         Parser parser = new Parser(tokens);
         ProgramNode program = parser.parse();
@@ -40,7 +40,7 @@ public class Main {
         KeyWordUsageChecker keyWordUsageChecker = new KeyWordUsageChecker();
         DeclarationChecker declarationChecker = new DeclarationChecker();
         keyWordUsageChecker.check(program);
-        declarationChecker.checkDeclarations(program);
+//        declarationChecker.checkDeclarations(program);
         System.out.println(program.toString());
 
         JasminCodeGenerator generator = new JasminCodeGenerator();
