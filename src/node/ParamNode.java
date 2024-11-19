@@ -1,8 +1,8 @@
 package node;
 
 public class ParamNode extends ASTNode {
-    String identifier;
-    ASTNode type;
+    public String identifier;
+    public ASTNode type;
 
     public ParamNode(String identifier, ASTNode type) {
         this.identifier = identifier;

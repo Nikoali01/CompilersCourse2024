@@ -4,8 +4,8 @@ import java.util.List;
 
 public class RoutineDeclarationNode extends ASTNode {
     public String identifier;
-    List<ParamNode> params;
-    ASTNode returnType;
+    public List<ParamNode> params;
+    public ASTNode returnType;
     public List<ASTNode> body;
 
     public RoutineDeclarationNode(String identifier, List<ParamNode> params, ASTNode returnType, List<ASTNode> body) {
