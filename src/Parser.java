@@ -313,7 +313,10 @@ public class Parser {
 
     private ASTNode parsePrimary() {
         if (match(TokenType.NUMBER)) {
-            return new LiteralNode(Double.parseDouble(previous().text));
+            if (previous().text.contains(".")) {
+                return new LiteralNode(Double.parseDouble(previous().text));
+            }
+            return new LiteralNode(Integer.parseInt(previous().text));
         }
         if (match(TokenType.STRING)) {
             return new LiteralNode(previous().text);
