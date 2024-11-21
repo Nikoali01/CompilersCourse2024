@@ -14,7 +14,7 @@ import java.util.List;
 public class Main {
     public static void main(String[] args) throws IOException {
 
-        File classFile = new File("C:\\Users\\engli\\IdeaProjects\\CompilersCourse2024\\jasmin-2.4\\Main.class");
+        File classFile = new File("/Users/emildavlityarov/Compilers/CompilerCourse2024/jasmin-2.4/Main.class");
 
         // Delete the file if it exists
         if (classFile.exists()) {
@@ -30,7 +30,7 @@ public class Main {
 
         Lexer lexer = new Lexer();
         FileToString fileToString = new FileToString();
-        String inputFileContent = fileToString.getStringFromTheLink("/Users/andrey/study/compilers/CompilersCourse2024/src/1.i");
+        String inputFileContent = fileToString.getStringFromTheLink("/Users/emildavlityarov/Compilers/CompilerCourse2024/src/1.i");
         List<Token> tokens = lexer.lex(inputFileContent);
         Parser parser = new Parser(tokens);
         ProgramNode program = parser.parse();
@@ -41,7 +41,7 @@ public class Main {
 //        DeclarationChecker declarationChecker = new DeclarationChecker();
         keyWordUsageChecker.check(program);
 //        declarationChecker.checkDeclarations(program);
-        System.out.println(program.toString());
+        System.out.println(program.statements);
 
         JasminCodeGenerator generator = new JasminCodeGenerator();
         String jasminCode = generator.generate(program);

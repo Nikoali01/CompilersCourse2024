@@ -1,21 +1,13 @@
 import node.*;
-import tokens.TokenType;
 
-import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static tokens.TokenType.GREATER;
-import static tokens.TokenType.LESS;
 
 public class JasminCodeGenerator {
     private StringBuilder jasminCode = new StringBuilder();
     private Map<String, VariableInfo> symbolTable = new HashMap<>();
     private int variableIndex = 0;
-
-    private record VariableInfo(String type, int index, boolean isArray, int arraySize) {
-    }
 
     public String generate(ProgramNode program) {
         jasminCode.append(".class public Main\n");
@@ -125,7 +117,6 @@ public class JasminCodeGenerator {
         };
     }
 
-
     private void generateRoutineDeclaration(RoutineDeclarationNode node) {
         String methodName = node.identifier;
         String methodDescriptor = generateMethodDescriptor(node);
@@ -152,7 +143,6 @@ public class JasminCodeGenerator {
 
         jasminCode.append(".end method\n\n");
     }
-
 
     private void generateIfStatement(IfStatementNode node) {
         String endLabel = generateUniqueLabel();  // Label for the end of the if block
@@ -302,7 +292,6 @@ public class JasminCodeGenerator {
         }
     }
 
-
     private void generatePrint(PrintStatementNode node) {
         jasminCode.append("getstatic java/lang/System/out Ljava/io/PrintStream;\n");
         generateStatement(node.expression);
@@ -417,6 +406,9 @@ public class JasminCodeGenerator {
         jasminCode.append(".class public ").append(node.identifier).append("\n");
         jasminCode.append(".super java/lang/Object\n\n");
 
+        // Register the record type in the symbolTable
+        symbolTable.put(node.identifier, new VariableInfo("L" + node.identifier + ";", -1, false, 0));
+
         for (VarDeclarationNode field : node.fields) {
             jasminCode.append(".field public ").append(field.identifier)
                     .append(" ").append(getJasminType((TypeNode) field.type)).append("\n");
@@ -434,10 +426,15 @@ public class JasminCodeGenerator {
             case "integer" -> "I";
             case "real" -> "D";
             case "string" -> "Ljava/lang/String;";
-            default -> throw new UnsupportedOperationException("Unsupported type: " + type.typeName);
+            default -> {
+                if (symbolTable.containsKey(type.typeName)) {
+                    yield "L" + type.typeName + ";"; // Reference type for user-defined records
+                } else {
+                    throw new UnsupportedOperationException("Unsupported type: " + type.typeName);
+                }
+            }
         };
     }
-
 
     private void generateForLoop(ForLoopNode node) {
         String startLabel = generateUniqueLabel();
@@ -465,5 +462,8 @@ public class JasminCodeGenerator {
         jasminCode.append("goto ").append(startLabel).append("\n");
 
         jasminCode.append(endLabel).append(":\n");
+    }
+
+    private record VariableInfo(String type, int index, boolean isArray, int arraySize) {
     }
 }
