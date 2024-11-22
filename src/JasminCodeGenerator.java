@@ -26,6 +26,8 @@ public class JasminCodeGenerator {
         return jasminCode.toString();
     }
 
+
+
     private void generateStatement(ASTNode node) {
         if (node instanceof LiteralNode literalNode) {
             generateLiteral(literalNode);
@@ -55,10 +57,38 @@ public class JasminCodeGenerator {
             generateRoutineDeclaration(routineNode);
         } else if (node instanceof ReturnStatementNode returnNode) {
             generateReturnStatement(returnNode);
+        } else if (node instanceof LValueNode lvalueNode) {  // Добавлено
+            generateLValue(lvalueNode);
         } else {
             throw new UnsupportedOperationException("Unsupported ASTNode: " + node.getClass().getSimpleName());
         }
     }
+    private void generateLValue(LValueNode node) {
+        // Генерация кода для базового объекта (например, node)
+        generateStatement(node.base);
+
+        if (node.field != null) {
+            // Доступ к полю объекта
+            VariableInfo baseInfo = symbolTable.get(((IdentifierNode) node.base).name);
+            if (baseInfo == null || !baseInfo.type.startsWith("L")) {
+                throw new UnsupportedOperationException("Base type must be a user-defined record.");
+            }
+            jasminCode.append("getfield ")
+                    .append(baseInfo.type.replace("L", "").replace(";", ""))
+                    .append("/")
+                    .append(node.field)
+                    .append(" ")
+                    .append(mapTypeToDescriptor(node.field))
+                    .append("\n");
+        }
+
+        if (node.index != null) {
+            // Доступ к элементу массива
+            generateStatement(node.index);
+            jasminCode.append("iaload\n"); // Для массива int (измените для других типов)
+        }
+    }
+
 
     private void generateReturnStatement(ReturnStatementNode node) {
         if (node.expression != null) {
@@ -104,7 +134,13 @@ public class JasminCodeGenerator {
             case "real" -> "D";
             case "string" -> "Ljava/lang/String;";
             case "boolean" -> "Z";
-            default -> throw new UnsupportedOperationException("Unsupported type: " + typeName);
+            default -> {
+                if (symbolTable.containsKey(typeName)) {
+                    yield "L" + typeName + ";"; // Ожидается, что это класс Java
+                } else {
+                    throw new UnsupportedOperationException("Unsupported type: " + typeName);
+                }
+            }
         };
     }
 
@@ -316,6 +352,8 @@ public class JasminCodeGenerator {
                 jasminCode.append("aload ").append(varInfo.index).append("\n");
             } else if (varInfo.type.equals("integer") || varInfo.type.equals("I")) {
                 jasminCode.append("iload ").append(varInfo.index).append("\n");
+            } else if (varInfo.type.startsWith("L")) { // Handle custom object types
+                jasminCode.append("aload ").append(varInfo.index).append("\n");
             } else {
                 throw new UnsupportedOperationException("Unsupported variable type: " + varInfo.type);
             }
@@ -426,6 +464,7 @@ public class JasminCodeGenerator {
             case "integer" -> "I";
             case "real" -> "D";
             case "string" -> "Ljava/lang/String;";
+            case "boolean" -> "Z";
             default -> {
                 if (symbolTable.containsKey(type.typeName)) {
                     yield "L" + type.typeName + ";"; // Reference type for user-defined records
