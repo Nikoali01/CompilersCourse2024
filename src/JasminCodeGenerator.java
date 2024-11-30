@@ -5,70 +5,70 @@ import java.util.List;
 import java.util.Map;
 
 public class JasminCodeGenerator {
-    private StringBuilder jasminCode = new StringBuilder();
+    private StringBuilder completeJasmincode = new StringBuilder();
+    private StringBuilder functionCode = new StringBuilder();
     private Map<String, VariableInfo> symbolTable = new HashMap<>();
     private int variableIndex = 0;
 
     public String generate(ProgramNode program) {
-        jasminCode.append(".class public Main\n");
-        jasminCode.append(".super java/lang/Object\n\n");
-        jasminCode.append(".method public static main([Ljava/lang/String;)V\n");
-        jasminCode.append(".limit stack 10\n");
-        jasminCode.append(".limit locals 10\n");
+        completeJasmincode.append(".class public Main\n");
+        completeJasmincode.append(".super java/lang/Object\n\n");
+
+
+
+        completeJasmincode.append(".method public static main([Ljava/lang/String;)V\n");
+        completeJasmincode.append(".limit stack 10\n");
+        completeJasmincode.append(".limit locals 10\n");
 
         for (ASTNode statement : program.statements) {
-            generateStatement(statement);
+            generateStatement(statement, completeJasmincode);
         }
-
-        jasminCode.append("return\n");
-        jasminCode.append(".end method\n");
-
-        return jasminCode.toString();
+        completeJasmincode.append("return\n");
+        completeJasmincode.append(".end method\n");
+        completeJasmincode.append(functionCode);
+        return completeJasmincode.toString();
     }
 
 
-
-    private void generateStatement(ASTNode node) {
+    private void generateStatement(ASTNode node, StringBuilder jasminCode) {
         if (node instanceof LiteralNode literalNode) {
-            generateLiteral(literalNode);
+            generateLiteral(literalNode, jasminCode);
         } else if (node instanceof VarDeclarationNode varNode) {
-            generateVarDeclaration(varNode);
+            generateVarDeclaration(varNode, jasminCode);
         } else if (node instanceof AssignmentNode assignmentNode) {
-            generateAssignment(assignmentNode);
+            generateAssignment(assignmentNode, jasminCode);
         } else if (node instanceof PrintStatementNode printNode) {
-            generatePrint(printNode);
+            generatePrint(printNode, jasminCode);
         } else if (node instanceof IdentifierNode identifierNode) {
-            generateIdentifier(identifierNode);
+            generateIdentifier(identifierNode, jasminCode);
         } else if (node instanceof BinaryOperationNode binaryNode) {
-            generateBinaryOperation(binaryNode);
+            generateBinaryOperation(binaryNode, jasminCode);
         } else if (node instanceof IfStatementNode ifNode) {
-            generateIfStatement(ifNode);
+            generateIfStatement(ifNode, jasminCode);
         } else if (node instanceof ForLoopNode forLoopNode) {
-            generateForLoop(forLoopNode);
+            generateForLoop(forLoopNode, jasminCode);
         } else if (node instanceof WhileLoopNode whileLoopNode) {
-            generateWhileLoop(whileLoopNode);
+            generateWhileLoop(whileLoopNode, jasminCode);
         } else if (node instanceof ArrayDeclarationNode arrayNode) {
-            generateArrayDeclaration(arrayNode);
+            generateArrayDeclaration(arrayNode, jasminCode);
         } else if (node instanceof FunctionCallNode functionCallNode) {
-            generateFunctionCall(functionCallNode);
+            generateFunctionCall(functionCallNode, jasminCode);
         } else if (node instanceof RecordDeclarationNode recordNode) {
-            generateRecordDeclaration(recordNode);
+            generateRecordDeclaration(recordNode, jasminCode);
         } else if (node instanceof RoutineDeclarationNode routineNode) {
-            generateRoutineDeclaration(routineNode);
+            generateRoutineDeclaration(routineNode, jasminCode);
         } else if (node instanceof ReturnStatementNode returnNode) {
-            generateReturnStatement(returnNode);
+            generateReturnStatement(returnNode, jasminCode);
         } else if (node instanceof LValueNode lvalueNode) {  // Добавлено
-            generateLValue(lvalueNode);
+            generateLValue(lvalueNode, jasminCode);
         } else {
             throw new UnsupportedOperationException("Unsupported ASTNode: " + node.getClass().getSimpleName());
         }
     }
-    private void generateLValue(LValueNode node) {
-        // Генерация кода для базового объекта (например, node)
-        generateStatement(node.base);
 
+    private void generateLValue(LValueNode node, StringBuilder jasminCode) {
+        generateStatement(node.base, jasminCode);
         if (node.field != null) {
-            // Доступ к полю объекта
             VariableInfo baseInfo = symbolTable.get(((IdentifierNode) node.base).name);
             if (baseInfo == null || !baseInfo.type.startsWith("L")) {
                 throw new UnsupportedOperationException("Base type must be a user-defined record.");
@@ -83,16 +83,15 @@ public class JasminCodeGenerator {
         }
 
         if (node.index != null) {
-            // Доступ к элементу массива
-            generateStatement(node.index);
-            jasminCode.append("iaload\n"); // Для массива int (измените для других типов)
+            generateStatement(node.index, jasminCode);
+            jasminCode.append("iaload\n");
         }
     }
 
 
-    private void generateReturnStatement(ReturnStatementNode node) {
+    private void generateReturnStatement(ReturnStatementNode node, StringBuilder jasminCode) {
         if (node.expression != null) {
-            generateStatement(node.expression);
+            generateStatement(node.expression, jasminCode);
 
             String returnType = mapTypeToReturnInstruction(node.expression.toString());
 
@@ -153,39 +152,53 @@ public class JasminCodeGenerator {
         };
     }
 
-    private void generateRoutineDeclaration(RoutineDeclarationNode node) {
+    private void generateRoutineDeclaration(RoutineDeclarationNode node, StringBuilder jasminCode) {
         String methodName = node.identifier;
         String methodDescriptor = generateMethodDescriptor(node);
 
-        jasminCode.append(".method public static ").append(methodName).append(methodDescriptor).append("\n");
-        jasminCode.append(".limit stack 10\n");
-        jasminCode.append(".limit locals ").append(10 + node.params.size()).append("\n");
+        // Генерация объявления метода
+        functionCode.append(".method public static ").append(methodName).append(methodDescriptor).append("\n");
+        functionCode.append(".limit stack 10\n");
+        functionCode.append(".limit locals ").append(10 + node.params.size()).append("\n");
 
+        // Добавление параметров в таблицу символов и их индексов
         int paramIndex = 0;
         for (ParamNode param : node.params) {
-            TypeNode test = (TypeNode) param.type;
-            String paramType = mapTypeToDescriptor(test.typeName);
+            String paramType = mapTypeToDescriptor(((TypeNode) param.type).typeName);
             symbolTable.put(param.identifier, new VariableInfo(paramType, paramIndex, false, 1));
-            paramIndex += paramType.equals("real") ? 2 : 1; // Реальный тип занимает 2 ячейки
+            paramIndex += paramType.equals("D") ? 2 : 1; // Для типа real увеличиваем на 2, так как это double
         }
 
+        // Генерация тела метода
         for (ASTNode statement : node.body) {
-            generateStatement(statement);
+            generateStatement(statement, functionCode);
         }
 
+        // Добавление инструкции возврата
         if (node.returnType != null) {
-            jasminCode.append(generateReturnInstruction(node.returnType.toString()));
+            functionCode.append(generateReturnInstruction(node.returnType.toString()));
         }
 
-        jasminCode.append(".end method\n\n");
+        functionCode.append(".end method\n\n");
     }
 
-    private void generateIfStatement(IfStatementNode node) {
+
+    private void generateFunctionCall(FunctionCallNode node, StringBuilder jasminCode) {
+        for (ASTNode arg : node.arguments) {
+            generateStatement(arg, jasminCode); // Генерация кода для аргументов
+        }
+
+        // Генерация вызова функции
+        jasminCode.append("invokestatic Main/").append(node.identifier)
+                .append("(").append(getArgumentDescriptor(node.arguments)).append(")I\n"); // Для функции add возвращаем int
+    }
+
+    private void generateIfStatement(IfStatementNode node, StringBuilder jasminCode) {
         String endLabel = generateUniqueLabel();  // Label for the end of the if block
         String elseLabel = generateUniqueLabel(); // Label for the else block
 
         BinaryOperationNode binaryOperationNode = (BinaryOperationNode) node.condition;
-        generateBinaryOperation(binaryOperationNode);
+        generateBinaryOperation(binaryOperationNode, jasminCode);
 
         switch (binaryOperationNode.operator) {
             case GREATER -> {
@@ -202,7 +215,7 @@ public class JasminCodeGenerator {
         }
 
         for (int i = 0; i < node.thenStatements.size(); i++) {
-            generateStatement(node.thenStatements.get(i));
+            generateStatement(node.thenStatements.get(i), jasminCode);
         }
 //        generateStatement(node.thenStatements.getFirst());  // This processes the statements in the "then" block
 
@@ -210,7 +223,7 @@ public class JasminCodeGenerator {
 
         jasminCode.append(elseLabel).append(":\n");
         for (int i = 0; i < node.elseStatements.size(); i++) {
-            generateStatement(node.elseStatements.get(i));
+            generateStatement(node.elseStatements.get(i), jasminCode);
         }
 //        generateStatement(node.elseStatements.getFirst());  // This processes the statements in the "else" block
 
@@ -221,10 +234,10 @@ public class JasminCodeGenerator {
         return "L" + variableIndex++;
     }
 
-    private void generateBinaryOperation(BinaryOperationNode node) {
-        generateStatement(node.left);
+    private void generateBinaryOperation(BinaryOperationNode node, StringBuilder jasminCode) {
+        generateStatement(node.left, jasminCode);
 
-        generateStatement(node.right);
+        generateStatement(node.right, jasminCode);
         boolean isDouble = false;
 
         if (node.left instanceof LiteralNode left && left.value instanceof Double) {
@@ -256,7 +269,7 @@ public class JasminCodeGenerator {
         }
     }
 
-    private void generateLiteral(LiteralNode node) {
+    private void generateLiteral(LiteralNode node, StringBuilder jasminCode) {
         Object value = node.value;
         if (value instanceof Integer intValue) {
             jasminCode.append("ldc ").append(intValue).append("\n");
@@ -269,31 +282,31 @@ public class JasminCodeGenerator {
         }
     }
 
-    private void generateVarDeclaration(VarDeclarationNode node) {
+    private void generateVarDeclaration(VarDeclarationNode node, StringBuilder jasminCode) {
         String varName = node.identifier;
 
         if (node.type instanceof TypeNode typeNode) {
             if (typeNode.typeName.equals("real")) {
                 // If the type is 'real', we store the value in a double local variable
-                generateStatement(node.expression != null ? node.expression : new LiteralNode(0.0)); // Default to 0.0
+                generateStatement(node.expression != null ? node.expression : new LiteralNode(0.0), jasminCode); // Default to 0.0
                 jasminCode.append("dstore ").append(variableIndex).append("\n");
                 symbolTable.put(varName, new VariableInfo("real", variableIndex, false, 1));
                 variableIndex += 2;  // Double takes 2 slots (as it's a 64-bit value)
             } else if (typeNode.typeName.equals("string")) {
                 // If the type is 'string', we store the value in a string local variable
-                generateStatement(node.expression != null ? node.expression : new LiteralNode("\"\"")); // Default to empty string
+                generateStatement(node.expression != null ? node.expression : new LiteralNode("\"\""), jasminCode); // Default to empty string
                 jasminCode.append("astore ").append(variableIndex).append("\n");
                 symbolTable.put(varName, new VariableInfo("string", variableIndex, false, 1));
                 variableIndex++;
                 // String takes 1 slot
             } else if (typeNode.typeName.equals("integer")) {
                 // If the type is 'integer', we store the value in an integer local variable
-                generateStatement(node.expression != null ? node.expression : new LiteralNode(0));
+                generateStatement(node.expression != null ? node.expression : new LiteralNode(0), jasminCode);
                 jasminCode.append("istore ").append(variableIndex).append("\n");
                 symbolTable.put(varName, new VariableInfo("integer", variableIndex++, false, 1));  // Integer takes 1 slot
             } else if (typeNode.typeName.equals("boolean")) {
                 // If the type is 'boolean', we store the value in a boolean local variable
-                generateStatement(node.expression != null ? node.expression : new LiteralNode(false));
+                generateStatement(node.expression != null ? node.expression : new LiteralNode(false), jasminCode);
                 jasminCode.append("istore ").append(variableIndex).append("\n");
                 symbolTable.put(varName, new VariableInfo("boolean", variableIndex++, false, 1));  // Boolean takes 1 slot
 
@@ -303,8 +316,8 @@ public class JasminCodeGenerator {
         }
     }
 
-    private void generateAssignment(AssignmentNode node) {
-        generateStatement(node.expression);  // Generate code for the right-hand side expression
+    private void generateAssignment(AssignmentNode node, StringBuilder jasminCode) {
+        generateStatement(node.expression, jasminCode);  // Generate code for the right-hand side expression
 
         if (node.lvalue instanceof IdentifierNode identifierNode) {
             String varName = identifierNode.name;
@@ -328,9 +341,9 @@ public class JasminCodeGenerator {
         }
     }
 
-    private void generatePrint(PrintStatementNode node) {
+    private void generatePrint(PrintStatementNode node, StringBuilder jasminCode) {
         jasminCode.append("getstatic java/lang/System/out Ljava/io/PrintStream;\n");
-        generateStatement(node.expression);
+        generateStatement(node.expression, jasminCode);
         if (node.expression instanceof IdentifierNode identifierNode &&
                 symbolTable.get(identifierNode.name).type.equals("real")) {
             jasminCode.append("invokevirtual java/io/PrintStream/println(D)V\n");
@@ -342,7 +355,7 @@ public class JasminCodeGenerator {
         }
     }
 
-    private void generateIdentifier(IdentifierNode node) {
+    private void generateIdentifier(IdentifierNode node, StringBuilder jasminCode) {
         String varName = node.name;
         if (symbolTable.containsKey(varName)) {
             VariableInfo varInfo = symbolTable.get(varName);
@@ -360,13 +373,13 @@ public class JasminCodeGenerator {
         }
     }
 
-    private void generateWhileLoop(WhileLoopNode node) {
+    private void generateWhileLoop(WhileLoopNode node, StringBuilder jasminCode) {
         String startLabel = generateUniqueLabel();
         String endLabel = generateUniqueLabel();
 
         jasminCode.append(startLabel).append(":\n");
 
-        generateStatement(node.condition);
+        generateStatement(node.condition, jasminCode);
 
         if (node.condition instanceof BinaryOperationNode conditionNode) {
             boolean isDouble = isDoubleComparison(conditionNode);
@@ -389,7 +402,7 @@ public class JasminCodeGenerator {
         }
 
         for (ASTNode statement : node.body) {
-            generateStatement(statement);
+            generateStatement(statement, jasminCode);
         }
 
         jasminCode.append("goto ").append(startLabel).append("\n");
@@ -411,19 +424,11 @@ public class JasminCodeGenerator {
         return false;
     }
 
-    private void generateArrayDeclaration(ArrayDeclarationNode node) {
+    private void generateArrayDeclaration(ArrayDeclarationNode node, StringBuilder jasminCode) {
         jasminCode.append("ldc ").append(node.size).append("\n");
         jasminCode.append("newarray int\n"); // Поддержка массивов int
         symbolTable.put(node.identifier, new VariableInfo("int[]", variableIndex, true, node.size));
         jasminCode.append("astore ").append(variableIndex++).append("\n");
-    }
-
-    private void generateFunctionCall(FunctionCallNode node) {
-        for (ASTNode arg : node.arguments) {
-            generateStatement(arg);
-        }
-        jasminCode.append("invokestatic Main/").append(node.identifier)
-                .append("(").append(getArgumentDescriptor(node.arguments)).append(")V\n");
     }
 
     private String getArgumentDescriptor(List<ASTNode> arguments) {
@@ -440,7 +445,7 @@ public class JasminCodeGenerator {
         return descriptor.toString();
     }
 
-    private void generateRecordDeclaration(RecordDeclarationNode node) {
+    private void generateRecordDeclaration(RecordDeclarationNode node, StringBuilder jasminCode) {
         jasminCode.append(".class public ").append(node.identifier).append("\n");
         jasminCode.append(".super java/lang/Object\n\n");
 
@@ -475,7 +480,7 @@ public class JasminCodeGenerator {
         };
     }
 
-    private void generateForLoop(ForLoopNode node) {
+    private void generateForLoop(ForLoopNode node, StringBuilder jasminCode) {
         String startLabel = generateUniqueLabel();
         String endLabel = generateUniqueLabel();
 
@@ -483,17 +488,17 @@ public class JasminCodeGenerator {
                 node.identifier,
                 new TypeNode("integer"),
                 node.startExpression
-        ));
+        ), jasminCode);
 
         jasminCode.append(startLabel).append(":\n");
 
         jasminCode.append("iload ").append(symbolTable.get(node.identifier).index).append("\n");
-        generateStatement(node.endExpression);
+        generateStatement(node.endExpression, jasminCode);
 
         jasminCode.append("if_icmpgt ").append(endLabel).append("\n");
 
         for (ASTNode statement : node.body) {
-            generateStatement(statement);
+            generateStatement(statement, jasminCode);
         }
 
         jasminCode.append("iinc ").append(symbolTable.get(node.identifier).index).append(" 1\n");

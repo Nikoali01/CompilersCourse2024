@@ -10,4 +10,4 @@ while temperature < 37.4 loop
   temperature := temperature + 0.1;
   print(temperature);
 end;
-print(temperature);
+print(temperature)

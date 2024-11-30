@@ -1,43 +1,47 @@
-.class public Main
+.class public RecordProcessor
 .super java/lang/Object
 
-.method public static main([Ljava/lang/String;)V
-.limit stack 10
-.limit locals 10
-.class public TreeNode
+# Определение рекорда (класс с полями id и name)
+.class public Record
 .super java/lang/Object
 
-.field public value I
-.field public left LTreeNode;
-.field public right LTreeNode;
-.method public <init>()V
-aload_0
-invokenonvirtual java/lang/Object/<init>()V
-return
+.field public id I
+.field public name Ljava/lang/String;
+
+.method public <init>(ILjava/lang/String;)V
+    .limit stack 10
+    .limit locals 10
+    aload_0
+    invokespecial java/lang/Object/<init>()V
+    aload_0
+    iload_1
+    putfield Record/id I
+    aload_0
+    aload_2
+    putfield Record/name Ljava/lang/String;
+    return
 .end method
 
-.class public FreeNode
-.super java/lang/Object
-
-.field public free LTreeNode;
-.method public <init>()V
-aload_0
-invokenonvirtual java/lang/Object/<init>()V
-return
+.method public toString()Ljava/lang/String;
+    .limit stack 10
+    .limit locals 10
+    aload_0
+    getfield Record/id I
+    invokestatic java/lang/String/valueOf(I)Ljava/lang/String;
+    ldc " - "
+    aload_0
+    getfield Record/name Ljava/lang/String;
+    invokevirtual java/lang/String/concat(Ljava/lang/String;)Ljava/lang/String;
+    invokevirtual java/lang/String/concat(Ljava/lang/String;)Ljava/lang/String;
+    areturn
 .end method
 
-.method public static insert(LTreeNode;I)LTreeNode;
-.limit stack 10
-.limit locals 12
-aload 0
-dcmpg
-ifeq L1
-iload 1
-goto L0
-L1:
-L0:
-return
-.end method
+# Главный метод для обработки рекордов
+.method public static processRecord(LRecord;)LRecord;
+    .limit stack 10
+    .limit locals 10
 
-return
-.end method
+    ; Получаем поле id и добавляем 1
+    aload_0
+    getfield Record/id I
+
