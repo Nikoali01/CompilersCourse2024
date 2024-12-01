@@ -1,5 +1,4 @@
 import node.ProgramNode;
-import optimization.ASTOptimizer;
 import semantic.DeclarationChecker;
 import semantic.KeyWordUsageChecker;
 import tokens.Token;
@@ -7,8 +6,6 @@ import tokens.Token;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 
 public class Main {
@@ -35,18 +32,18 @@ public class Main {
         Parser parser = new Parser(tokens);
         ProgramNode program = parser.parse();
 
-        ASTOptimizer optimizer = new ASTOptimizer();
-        program = optimizer.optimize(program);
+//        ASTOptimizer optimizer = new ASTOptimizer();
+//        program = optimizer.optimize(program);
         KeyWordUsageChecker keyWordUsageChecker = new KeyWordUsageChecker();
         DeclarationChecker declarationChecker = new DeclarationChecker();
         keyWordUsageChecker.check(program);
-        declarationChecker.checkDeclarations(program);
+//        declarationChecker.checkDeclarations(program);
         System.out.println(program.statements);
 
-//        JasminCodeGenerator generator = new JasminCodeGenerator();
-//        String jasminCode = generator.generate(program);
-//        try (FileWriter fileWriter = new FileWriter("Main1.j")) {
-//            fileWriter.write(jasminCode);
-//        }
+        JasminCodeGenerator generator = new JasminCodeGenerator();
+        String jasminCode = generator.generate(program);
+        try (FileWriter fileWriter = new FileWriter("Main.j")) {
+            fileWriter.write(jasminCode);
+        }
     }
 }

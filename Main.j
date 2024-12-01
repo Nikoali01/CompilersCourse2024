@@ -1,47 +1,36 @@
-.class public RecordProcessor
+.class public Main
 .super java/lang/Object
 
-# Определение рекорда (класс с полями id и name)
-.class public Record
-.super java/lang/Object
-
-.field public id I
-.field public name Ljava/lang/String;
-
-.method public <init>(ILjava/lang/String;)V
-    .limit stack 10
-    .limit locals 10
-    aload_0
-    invokespecial java/lang/Object/<init>()V
-    aload_0
-    iload_1
-    putfield Record/id I
-    aload_0
-    aload_2
-    putfield Record/name Ljava/lang/String;
-    return
+.method public static main([Ljava/lang/String;)V
+.limit stack 10
+.limit locals 10
+new TreeNode
+dup
+invokespecial TreeNode/<init>()V
+astore 0
+new TreeNode
+dup
+invokespecial TreeNode/<init>()V
+astore 0
+ldc 0
+istore 1
+ldc 1
+istore 1
+aload 0
+iload 1
+invokestatic Main/insert(LTreeNode;I)V
+return
 .end method
-
-.method public toString()Ljava/lang/String;
-    .limit stack 10
-    .limit locals 10
-    aload_0
-    getfield Record/id I
-    invokestatic java/lang/String/valueOf(I)Ljava/lang/String;
-    ldc " - "
-    aload_0
-    getfield Record/name Ljava/lang/String;
-    invokevirtual java/lang/String/concat(Ljava/lang/String;)Ljava/lang/String;
-    invokevirtual java/lang/String/concat(Ljava/lang/String;)Ljava/lang/String;
-    areturn
+.method public static insert(LTreeNode;I)V
+.limit stack 10
+.limit locals 12
+aload 0
+iload 1
+putfield TreeNode/value I
+getstatic java/lang/System/out Ljava/io/PrintStream;
+aload 0
+getfield TreeNode/value I
+invokevirtual java/io/PrintStream/println(I)V
+return
 .end method
-
-# Главный метод для обработки рекордов
-.method public static processRecord(LRecord;)LRecord;
-    .limit stack 10
-    .limit locals 10
-
-    ; Получаем поле id и добавляем 1
-    aload_0
-    getfield Record/id I
 

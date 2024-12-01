@@ -1,5 +1,7 @@
 import node.*;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -8,14 +10,34 @@ public class JasminCodeGenerator {
     private StringBuilder completeJasmincode = new StringBuilder();
     private StringBuilder functionCode = new StringBuilder();
     private Map<String, VariableInfo> symbolTable = new HashMap<>();
+    private Map<String, Map<String, String>> recordTypes = new HashMap<>();
+    private Map<String, String> varRecord = new HashMap<>();
+    private Map<String, String> functionParams = new HashMap<>();
+
     private int variableIndex = 0;
+
+    public static void printRecordTypes(Map<String, Map<String, String>> recordTypes) {
+        // Обход внешнего Map (по рекордам)
+        for (Map.Entry<String, Map<String, String>> recordEntry : recordTypes.entrySet()) {
+            String recordName = recordEntry.getKey();
+            Map<String, String> fields = recordEntry.getValue();
+
+            System.out.println("Record: " + recordName);
+
+            // Обход внутреннего Map (по полям и их типам)
+            for (Map.Entry<String, String> fieldEntry : fields.entrySet()) {
+                String fieldName = fieldEntry.getKey();
+                String fieldType = fieldEntry.getValue();
+
+                System.out.println("  Field: " + fieldName + " -> Type: " + fieldType);
+            }
+            System.out.println();  // Печатаем пустую строку после каждого рекорда
+        }
+    }
 
     public String generate(ProgramNode program) {
         completeJasmincode.append(".class public Main\n");
         completeJasmincode.append(".super java/lang/Object\n\n");
-
-
-
         completeJasmincode.append(".method public static main([Ljava/lang/String;)V\n");
         completeJasmincode.append(".limit stack 10\n");
         completeJasmincode.append(".limit locals 10\n");
@@ -26,9 +48,9 @@ public class JasminCodeGenerator {
         completeJasmincode.append("return\n");
         completeJasmincode.append(".end method\n");
         completeJasmincode.append(functionCode);
+        printRecordTypes(recordTypes);
         return completeJasmincode.toString();
     }
-
 
     private void generateStatement(ASTNode node, StringBuilder jasminCode) {
         if (node instanceof LiteralNode literalNode) {
@@ -59,7 +81,7 @@ public class JasminCodeGenerator {
             generateRoutineDeclaration(routineNode, jasminCode);
         } else if (node instanceof ReturnStatementNode returnNode) {
             generateReturnStatement(returnNode, jasminCode);
-        } else if (node instanceof LValueNode lvalueNode) {  // Добавлено
+        } else if (node instanceof LValueNode lvalueNode) {
             generateLValue(lvalueNode, jasminCode);
         } else {
             throw new UnsupportedOperationException("Unsupported ASTNode: " + node.getClass().getSimpleName());
@@ -68,33 +90,37 @@ public class JasminCodeGenerator {
 
     private void generateLValue(LValueNode node, StringBuilder jasminCode) {
         generateStatement(node.base, jasminCode);
-        if (node.field != null) {
-            VariableInfo baseInfo = symbolTable.get(((IdentifierNode) node.base).name);
+        if (node.field != null && node.base instanceof IdentifierNode identifierNode) {
+            VariableInfo baseInfo = symbolTable.get(identifierNode.name);
             if (baseInfo == null || !baseInfo.type.startsWith("L")) {
                 throw new UnsupportedOperationException("Base type must be a user-defined record.");
             }
+            String fieldName = node.field;
+            String varType = varRecord.get(((IdentifierNode) node.base).name);
+            Map<String, String> recordVars = recordTypes.get(varType);
+            String fieldType = recordVars.get(fieldName);
             jasminCode.append("getfield ")
-                    .append(baseInfo.type.replace("L", "").replace(";", ""))
+                    .append(varType)
                     .append("/")
-                    .append(node.field)
+                    .append(fieldName)
                     .append(" ")
-                    .append(mapTypeToDescriptor(node.field))
+                    .append(fieldType)
                     .append("\n");
-        }
 
+        } else if (node.base instanceof LValueNode) {
+            generateLValue((LValueNode) node.base, jasminCode);
+
+        }
         if (node.index != null) {
             generateStatement(node.index, jasminCode);
             jasminCode.append("iaload\n");
         }
     }
 
-
     private void generateReturnStatement(ReturnStatementNode node, StringBuilder jasminCode) {
         if (node.expression != null) {
             generateStatement(node.expression, jasminCode);
-
             String returnType = mapTypeToReturnInstruction(node.expression.toString());
-
             jasminCode.append(returnType).append("\n");
         } else {
             jasminCode.append("return\n");
@@ -122,7 +148,7 @@ public class JasminCodeGenerator {
             TypeNode returnType = (TypeNode) node.returnType;
             descriptor.append(mapTypeToDescriptor(returnType.typeName));
         } else {
-            descriptor.append("V"); // void
+            descriptor.append("V");
         }
         return descriptor.toString();
     }
@@ -135,7 +161,7 @@ public class JasminCodeGenerator {
             case "boolean" -> "Z";
             default -> {
                 if (symbolTable.containsKey(typeName)) {
-                    yield "L" + typeName + ";"; // Ожидается, что это класс Java
+                    yield "L" + typeName + ";";
                 } else {
                     throw new UnsupportedOperationException("Unsupported type: " + typeName);
                 }
@@ -148,85 +174,87 @@ public class JasminCodeGenerator {
             case "integer", "boolean" -> "ireturn\n";
             case "real" -> "dreturn\n";
             case "string" -> "areturn\n";
-            default -> "return\n"; // Для void
+            default -> "return\n";
         };
     }
 
     private void generateRoutineDeclaration(RoutineDeclarationNode node, StringBuilder jasminCode) {
         String methodName = node.identifier;
         String methodDescriptor = generateMethodDescriptor(node);
-
-        // Генерация объявления метода
         functionCode.append(".method public static ").append(methodName).append(methodDescriptor).append("\n");
+        functionParams.put(methodName, methodDescriptor);
         functionCode.append(".limit stack 10\n");
         functionCode.append(".limit locals ").append(10 + node.params.size()).append("\n");
-
-        // Добавление параметров в таблицу символов и их индексов
         int paramIndex = 0;
         for (ParamNode param : node.params) {
-            String paramType = mapTypeToDescriptor(((TypeNode) param.type).typeName);
-            symbolTable.put(param.identifier, new VariableInfo(paramType, paramIndex, false, 1));
-            paramIndex += paramType.equals("D") ? 2 : 1; // Для типа real увеличиваем на 2, так как это double
+            String paramType = ((TypeNode) param.type).typeName;
+            String typeName = ((TypeNode) param.type).typeName;
+            if (recordTypes.containsKey(typeName)) {
+                varRecord.put(param.identifier, typeName);
+                jasminCode.append("new ").append(typeName).append("\n");
+                jasminCode.append("dup\n");
+                jasminCode.append("invokespecial ").append(typeName).append("/<init>()V\n");
+                jasminCode.append("astore ").append(variableIndex).append("\n");
+                symbolTable.put(param.identifier, new VariableInfo("L" + typeName + ";", paramIndex++, false, 1));
+            } else {
+                symbolTable.put(param.identifier, new VariableInfo(paramType, paramIndex, false, 1));
+                paramIndex += paramType.equals("D") ? 2 : 1;
+            }
         }
-
-        // Генерация тела метода
         for (ASTNode statement : node.body) {
             generateStatement(statement, functionCode);
         }
-
-        // Добавление инструкции возврата
         if (node.returnType != null) {
             functionCode.append(generateReturnInstruction(node.returnType.toString()));
+        } else {
+            functionCode.append("return\n");
         }
-
         functionCode.append(".end method\n\n");
     }
 
-
     private void generateFunctionCall(FunctionCallNode node, StringBuilder jasminCode) {
         for (ASTNode arg : node.arguments) {
-            generateStatement(arg, jasminCode); // Генерация кода для аргументов
+            generateStatement(arg, jasminCode);
         }
-
-        // Генерация вызова функции
-        jasminCode.append("invokestatic Main/").append(node.identifier)
-                .append("(").append(getArgumentDescriptor(node.arguments)).append(")I\n"); // Для функции add возвращаем int
+        jasminCode.append("invokestatic Main/")
+                .append(node.identifier)
+                .append(String.format("%s\n", functionParams.get(node.identifier)));
     }
 
     private void generateIfStatement(IfStatementNode node, StringBuilder jasminCode) {
-        String endLabel = generateUniqueLabel();  // Label for the end of the if block
-        String elseLabel = generateUniqueLabel(); // Label for the else block
-
+        String endLabel = generateUniqueLabel();
+        String elseLabel = generateUniqueLabel();
         BinaryOperationNode binaryOperationNode = (BinaryOperationNode) node.condition;
         generateBinaryOperation(binaryOperationNode, jasminCode);
-
         switch (binaryOperationNode.operator) {
             case GREATER -> {
-                jasminCode.append("iflt ").append(elseLabel).append("\n"); // Jump to elseLabel if condition is false
+                jasminCode.append("ifle ").append(elseLabel).append("\n");
             }
             case LESS -> {
-                jasminCode.append("ifgt ").append(elseLabel).append("\n"); // Jump to elseLabel if condition is false
+                jasminCode.append("ifge ").append(elseLabel).append("\n");
             }
             case EQUAL -> {
-                jasminCode.append("ifeq ").append(elseLabel).append("\n"); // Jump to elseLabel if condition is false
+                jasminCode.append("ifne ").append(elseLabel).append("\n");
+            }
+            case GREATER_EQUAL -> {
+                jasminCode.append("iflt ").append(elseLabel).append("\n");
+            }
+            case LESS_EQUAL -> {
+                jasminCode.append("ifgt ").append(elseLabel).append("\n");
             }
             default ->
                     throw new UnsupportedOperationException("Unsupported operator in condition: " + binaryOperationNode.operator);
         }
-
         for (int i = 0; i < node.thenStatements.size(); i++) {
             generateStatement(node.thenStatements.get(i), jasminCode);
         }
 //        generateStatement(node.thenStatements.getFirst());  // This processes the statements in the "then" block
-
         jasminCode.append("goto ").append(endLabel).append("\n");
-
         jasminCode.append(elseLabel).append(":\n");
         for (int i = 0; i < node.elseStatements.size(); i++) {
             generateStatement(node.elseStatements.get(i), jasminCode);
         }
 //        generateStatement(node.elseStatements.getFirst());  // This processes the statements in the "else" block
-
         jasminCode.append(endLabel).append(":\n");
     }
 
@@ -236,10 +264,8 @@ public class JasminCodeGenerator {
 
     private void generateBinaryOperation(BinaryOperationNode node, StringBuilder jasminCode) {
         generateStatement(node.left, jasminCode);
-
         generateStatement(node.right, jasminCode);
         boolean isDouble = false;
-
         if (node.left instanceof LiteralNode left && left.value instanceof Double) {
             isDouble = true;
         } else if (node.left instanceof IdentifierNode leftIdentifier) {
@@ -248,7 +274,6 @@ public class JasminCodeGenerator {
                 isDouble = true;
             }
         }
-
         if (node.right instanceof LiteralNode right && right.value instanceof Double) {
             isDouble = true;
         } else if (node.right instanceof IdentifierNode rightIdentifier) {
@@ -257,14 +282,33 @@ public class JasminCodeGenerator {
                 isDouble = true;
             }
         }
-
         switch (node.operator) {
             case PLUS -> jasminCode.append(isDouble ? "dadd\n" : "iadd\n");
             case SLASH -> jasminCode.append(isDouble ? "ddiv\n" : "idiv\n");
+            case MINUS -> jasminCode.append(isDouble ? "dsub\n" : "isub\n");
             case STAR -> jasminCode.append(isDouble ? "dmul\n" : "imul\n");
-            case GREATER -> jasminCode.append("dcmpg\n");
-            case LESS -> jasminCode.append("dcmpg\n");
-            case EQUAL -> jasminCode.append("dcmpg\n");
+            case LESS_EQUAL -> {
+                if (isDouble) {
+                    jasminCode.append("dcmpg\n").append("ifle label_less_equal\n");
+                } else {
+                    jasminCode.append("if_icmple label_less_equal\n");
+                }
+            }
+            case GREATER_EQUAL -> {
+                if (isDouble) {
+                    jasminCode.append("dcmpg\n").append("ifge label_greater_equal\n");
+                } else {
+                    jasminCode.append("if_icmpge label_greater_equal\n");
+                }
+            }
+            case MOD -> {
+                if (isDouble) {
+                    jasminCode.append("drem\n");
+                } else {
+                    jasminCode.append("irem\n");
+                }
+            }
+            case GREATER, EQUAL, LESS -> jasminCode.append("dcmpg\n");
             default -> throw new UnsupportedOperationException("Unsupported operator: " + node.operator);
         }
     }
@@ -277,6 +321,16 @@ public class JasminCodeGenerator {
             jasminCode.append("ldc2_w ").append(doubleValue).append("\n");
         } else if (value instanceof String stringValue) {
             jasminCode.append("ldc ").append(stringValue).append("\n");
+        } else if (value instanceof Boolean booleanValue) {
+            jasminCode.append("iconst_").append(booleanValue ? 1 : 0).append("\n");
+        } else if (value instanceof TypeNode typeNodeValue) {
+            if (symbolTable.containsKey(typeNodeValue.typeName)) {
+                jasminCode.append(String.format("new %s\n", typeNodeValue.typeName));
+                jasminCode.append("dup\n");
+                jasminCode.append(String.format("invokespecial %s/<init>()V\n", typeNodeValue.typeName));
+            } else {
+                jasminCode.append("aconst_null\n");
+            }
         } else {
             throw new UnsupportedOperationException("Unsupported literal type: " + value.getClass().getSimpleName());
         }
@@ -284,44 +338,53 @@ public class JasminCodeGenerator {
 
     private void generateVarDeclaration(VarDeclarationNode node, StringBuilder jasminCode) {
         String varName = node.identifier;
-
         if (node.type instanceof TypeNode typeNode) {
-            if (typeNode.typeName.equals("real")) {
-                // If the type is 'real', we store the value in a double local variable
-                generateStatement(node.expression != null ? node.expression : new LiteralNode(0.0), jasminCode); // Default to 0.0
-                jasminCode.append("dstore ").append(variableIndex).append("\n");
-                symbolTable.put(varName, new VariableInfo("real", variableIndex, false, 1));
-                variableIndex += 2;  // Double takes 2 slots (as it's a 64-bit value)
-            } else if (typeNode.typeName.equals("string")) {
-                // If the type is 'string', we store the value in a string local variable
-                generateStatement(node.expression != null ? node.expression : new LiteralNode("\"\""), jasminCode); // Default to empty string
-                jasminCode.append("astore ").append(variableIndex).append("\n");
-                symbolTable.put(varName, new VariableInfo("string", variableIndex, false, 1));
-                variableIndex++;
-                // String takes 1 slot
-            } else if (typeNode.typeName.equals("integer")) {
-                // If the type is 'integer', we store the value in an integer local variable
-                generateStatement(node.expression != null ? node.expression : new LiteralNode(0), jasminCode);
-                jasminCode.append("istore ").append(variableIndex).append("\n");
-                symbolTable.put(varName, new VariableInfo("integer", variableIndex++, false, 1));  // Integer takes 1 slot
-            } else if (typeNode.typeName.equals("boolean")) {
-                // If the type is 'boolean', we store the value in a boolean local variable
-                generateStatement(node.expression != null ? node.expression : new LiteralNode(false), jasminCode);
-                jasminCode.append("istore ").append(variableIndex).append("\n");
-                symbolTable.put(varName, new VariableInfo("boolean", variableIndex++, false, 1));  // Boolean takes 1 slot
+            String typeName = typeNode.typeName;
+            switch (typeName) {
+                case "real":
+                    generateStatement(node.expression != null ? node.expression : new LiteralNode(0.0), jasminCode);
+                    jasminCode.append("dstore ").append(variableIndex).append("\n");
+                    symbolTable.put(varName, new VariableInfo("real", variableIndex, false, 1));
+                    variableIndex += 2; // Double занимает 2 слота
+                    break;
 
-            } else {
-                throw new UnsupportedOperationException("Unsupported type: " + typeNode.typeName);
+                case "string":
+                    generateStatement(node.expression != null ? node.expression : new LiteralNode("\"\""), jasminCode);
+                    jasminCode.append("astore ").append(variableIndex).append("\n");
+                    symbolTable.put(varName, new VariableInfo("string", variableIndex++, false, 1));
+                    break;
+
+                case "integer":
+                    generateStatement(node.expression != null ? node.expression : new LiteralNode(0), jasminCode);
+                    jasminCode.append("istore ").append(variableIndex).append("\n");
+                    symbolTable.put(varName, new VariableInfo("integer", variableIndex++, false, 1));
+                    break;
+
+                case "boolean":
+                    generateStatement(node.expression != null ? node.expression : new LiteralNode(false), jasminCode);
+                    jasminCode.append("istore ").append(variableIndex).append("\n");
+                    symbolTable.put(varName, new VariableInfo("boolean", variableIndex++, false, 1));
+                    break;
+
+                default:
+                    if (symbolTable.containsKey(typeName)) {
+                        varRecord.put(varName, typeName);
+                        jasminCode.append("new ").append(typeName).append("\n");
+                        jasminCode.append("dup\n");
+                        jasminCode.append("invokespecial ").append(typeName).append("/<init>()V\n");
+                        jasminCode.append("astore ").append(variableIndex).append("\n");
+                        symbolTable.put(varName, new VariableInfo("L" + typeName + ";", variableIndex++, false, 1));
+                    } else {
+                        throw new UnsupportedOperationException("Unsupported type: " + typeName);
+                    }
             }
         }
     }
 
     private void generateAssignment(AssignmentNode node, StringBuilder jasminCode) {
-        generateStatement(node.expression, jasminCode);  // Generate code for the right-hand side expression
-
         if (node.lvalue instanceof IdentifierNode identifierNode) {
+            generateStatement(node.expression, jasminCode);  // Generate code for the right-hand side expression
             String varName = identifierNode.name;
-
             if (symbolTable.containsKey(varName)) {
                 VariableInfo varInfo = symbolTable.get(varName);
                 switch (varInfo.type) {
@@ -339,20 +402,74 @@ public class JasminCodeGenerator {
                 }
             }
         }
+        if (node.lvalue instanceof LValueNode lvalueNode) {
+            if (lvalueNode.field != null) {
+                String varName = ((IdentifierNode) lvalueNode.base).name;
+                String fieldName = lvalueNode.field;
+                String varType = varRecord.get(((IdentifierNode) lvalueNode.base).name);
+                Map<String, String> recordVars = recordTypes.get(varType);
+                String fieldType = recordVars.get(fieldName);
+                if (symbolTable.containsKey(varName)) {
+                    VariableInfo varInfo = symbolTable.get(varName);
+                    jasminCode.append("aload ").append(varInfo.index).append("\n");
+                    generateStatement(node.expression, jasminCode);
+                    jasminCode.append("putfield ").append(varType).append("/").append(fieldName).append(" ").append(fieldType).append("\n");
+                }
+            }
+
+            // Если lvalueNode.index не null, обрабатываем как массив
+            if (lvalueNode.index != null) {
+                // Генерация кода для индекса
+                generateStatement(lvalueNode.index, jasminCode);
+
+                // Пример для целочисленного массива
+                jasminCode.append("iastore\n");  // Для целочисленного массива
+            }
+        }
     }
 
     private void generatePrint(PrintStatementNode node, StringBuilder jasminCode) {
         jasminCode.append("getstatic java/lang/System/out Ljava/io/PrintStream;\n");
         generateStatement(node.expression, jasminCode);
-        if (node.expression instanceof IdentifierNode identifierNode &&
-                symbolTable.get(identifierNode.name).type.equals("real")) {
-            jasminCode.append("invokevirtual java/io/PrintStream/println(D)V\n");
-        } else if (node.expression instanceof IdentifierNode identifierNode &&
-                symbolTable.get(identifierNode.name).type.equals("integer")) {
-            jasminCode.append("invokevirtual java/io/PrintStream/println(I)V\n");
-        } else {
-            jasminCode.append("invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
+        if (node.expression instanceof IdentifierNode identifierNode) {
+            if (symbolTable.get(identifierNode.name).type.equals("real")) {
+                jasminCode.append("invokevirtual java/io/PrintStream/println(D)V\n");
+            } else if (symbolTable.get(identifierNode.name).type.equals("integer")) {
+                jasminCode.append("invokevirtual java/io/PrintStream/println(I)V\n");
+            } else {
+                jasminCode.append("invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
+            }
+        } else if (node.expression instanceof LValueNode lValueNode) {
+            handleLValuePrint(lValueNode, jasminCode);
         }
+    }
+
+    private void handleLValuePrint(LValueNode lValueNode, StringBuilder jasminCode) {
+        if (lValueNode.index == null) {
+            String fieldType = resolveFieldType(lValueNode);
+            if ("D".equals(fieldType)) {
+                jasminCode.append("invokevirtual java/io/PrintStream/println(D)V\n");
+            } else if ("I".equals(fieldType)) {
+                jasminCode.append("invokevirtual java/io/PrintStream/println(I)V\n");
+            } else if ("Ljava/lang/String;".equals(fieldType)) {
+                jasminCode.append("invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
+            }
+        } else {
+            // Печать элемента массива
+            jasminCode.append("iaload\n");  // для массива int, адаптируйте для других типов
+            jasminCode.append("invokevirtual java/io/PrintStream/println(I)V\n");
+        }
+    }
+
+    private String resolveFieldType(LValueNode lValueNode) {
+        if (lValueNode.base instanceof IdentifierNode identifierNode) {
+            String varType = varRecord.get(identifierNode.name);
+            Map<String, String> recordVars = recordTypes.get(varType);
+            return recordVars.get(lValueNode.field);
+        } else if (lValueNode.base instanceof LValueNode nestedLValue) {
+            return resolveFieldType(null);//нужно исправить
+        }
+        throw new UnsupportedOperationException("Unsupported base type for LValue.");
     }
 
     private void generateIdentifier(IdentifierNode node, StringBuilder jasminCode) {
@@ -376,11 +493,8 @@ public class JasminCodeGenerator {
     private void generateWhileLoop(WhileLoopNode node, StringBuilder jasminCode) {
         String startLabel = generateUniqueLabel();
         String endLabel = generateUniqueLabel();
-
         jasminCode.append(startLabel).append(":\n");
-
         generateStatement(node.condition, jasminCode);
-
         if (node.condition instanceof BinaryOperationNode conditionNode) {
             boolean isDouble = isDoubleComparison(conditionNode);
             switch (conditionNode.operator) {
@@ -396,17 +510,13 @@ public class JasminCodeGenerator {
                 default ->
                         throw new UnsupportedOperationException("Unsupported operator in condition: " + conditionNode.operator);
             }
-
         } else {
             throw new UnsupportedOperationException("While loop condition must be a binary operation.");
         }
-
         for (ASTNode statement : node.body) {
             generateStatement(statement, jasminCode);
         }
-
         jasminCode.append("goto ").append(startLabel).append("\n");
-
         jasminCode.append(endLabel).append(":\n");
     }
 
@@ -426,7 +536,7 @@ public class JasminCodeGenerator {
 
     private void generateArrayDeclaration(ArrayDeclarationNode node, StringBuilder jasminCode) {
         jasminCode.append("ldc ").append(node.size).append("\n");
-        jasminCode.append("newarray int\n"); // Поддержка массивов int
+        jasminCode.append("newarray int\n");
         symbolTable.put(node.identifier, new VariableInfo("int[]", variableIndex, true, node.size));
         jasminCode.append("astore ").append(variableIndex++).append("\n");
     }
@@ -445,23 +555,50 @@ public class JasminCodeGenerator {
         return descriptor.toString();
     }
 
-    private void generateRecordDeclaration(RecordDeclarationNode node, StringBuilder jasminCode) {
-        jasminCode.append(".class public ").append(node.identifier).append("\n");
-        jasminCode.append(".super java/lang/Object\n\n");
-
-        // Register the record type in the symbolTable
+    private void generateRecordDeclaration(RecordDeclarationNode node, StringBuilder mainCode) {
+        StringBuilder recordCode = new StringBuilder();
         symbolTable.put(node.identifier, new VariableInfo("L" + node.identifier + ";", -1, false, 0));
+        recordCode.append(".class public ").append(node.identifier).append("\n");
+        recordCode.append(".super java/lang/Object\n\n");
+        Map<String, String> fieldTypes = new HashMap<>();
+        for (VarDeclarationNode field : node.fields) {
+            String fieldType = getJasminType((TypeNode) field.type);
+            fieldTypes.put(field.identifier, fieldType);
+            recordCode.append(".field public ").append(field.identifier)
+                    .append(" ").append(fieldType).append("\n");
+        }
+        recordTypes.put(node.identifier, fieldTypes);
+        recordCode.append(".method public <init>()V\n");
+        recordCode.append(".limit stack 10\n");
+        recordCode.append(".limit locals 10\n");
+        recordCode.append("    aload_0\n");
+        recordCode.append("    invokenonvirtual java/lang/Object/<init>()V\n");
 
         for (VarDeclarationNode field : node.fields) {
-            jasminCode.append(".field public ").append(field.identifier)
-                    .append(" ").append(getJasminType((TypeNode) field.type)).append("\n");
+            recordCode.append("    aload_0\n");
+            String fieldType = getJasminType((TypeNode) field.type);
+            if (fieldType.equals("I")) {
+                recordCode.append("    iconst_0\n");
+            } else if (fieldType.equals("D")) {
+                recordCode.append("    dconst_0\n");
+            } else {
+                recordCode.append("    aconst_null\n");
+            }
+            recordCode.append("    putfield ").append(node.identifier).append("/")
+                    .append(field.identifier).append(" ").append(fieldType).append("\n");
         }
+        recordCode.append("    return\n");
+        recordCode.append(".end method\n");
+        writeToFile(node.identifier + ".j", recordCode.toString());
+    }
 
-        jasminCode.append(".method public <init>()V\n");
-        jasminCode.append("aload_0\n");
-        jasminCode.append("invokenonvirtual java/lang/Object/<init>()V\n");
-        jasminCode.append("return\n");
-        jasminCode.append(".end method\n\n");
+    private void writeToFile(String fileName, String content) {
+        try (FileWriter writer = new FileWriter(fileName)) {
+            writer.write(content);
+            System.out.println("Record class generated: " + fileName);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private String getJasminType(TypeNode type) {
@@ -472,7 +609,7 @@ public class JasminCodeGenerator {
             case "boolean" -> "Z";
             default -> {
                 if (symbolTable.containsKey(type.typeName)) {
-                    yield "L" + type.typeName + ";"; // Reference type for user-defined records
+                    yield "L" + type.typeName + ";";
                 } else {
                     throw new UnsupportedOperationException("Unsupported type: " + type.typeName);
                 }
@@ -483,28 +620,20 @@ public class JasminCodeGenerator {
     private void generateForLoop(ForLoopNode node, StringBuilder jasminCode) {
         String startLabel = generateUniqueLabel();
         String endLabel = generateUniqueLabel();
-
         generateVarDeclaration(new VarDeclarationNode(
                 node.identifier,
                 new TypeNode("integer"),
                 node.startExpression
         ), jasminCode);
-
         jasminCode.append(startLabel).append(":\n");
-
         jasminCode.append("iload ").append(symbolTable.get(node.identifier).index).append("\n");
         generateStatement(node.endExpression, jasminCode);
-
         jasminCode.append("if_icmpgt ").append(endLabel).append("\n");
-
         for (ASTNode statement : node.body) {
             generateStatement(statement, jasminCode);
         }
-
         jasminCode.append("iinc ").append(symbolTable.get(node.identifier).index).append(" 1\n");
-
         jasminCode.append("goto ").append(startLabel).append("\n");
-
         jasminCode.append(endLabel).append(":\n");
     }
 

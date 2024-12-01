@@ -1,8 +1,19 @@
-routine add(a: integer, b: integer) : integer is
-  return a + b;
+type TreeNode is record
+    var value : integer;
+    var left : TreeNode;
+    var right : TreeNode;
 end;
 
-var result: integer is add(1, 2);
+type FreeNode is record
+    var free : TreeNode;
+end;
 
-// рекорды, функция которая принимает рекорд и возвращает другой рекорд
-// рекорд а является частью рекорда б функция вернет родительский рекорд
+routine insert(node : TreeNode, val : integer) is
+    node.value := val;
+    print(node.value);
+end;
+
+var node: TreeNode;
+var val: integer;
+val := 1;
+insert(node, val);
