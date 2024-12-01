@@ -1,4 +1,5 @@
-var counter: integer is 0;
-while counter < 5 loop
-  counter := counter + 1;
+var counter: real is 0.0;
+while counter < 5.0 loop
+  counter := counter + 1.0;
+  print(counter);
 end;
