@@ -1,3 +1,3 @@
-var height is 180;
-var weight is 70.5;
-var isChecked is false;
+var height : integer is 180;
+var weight : real is 70.5;
+var isChecked : boolean is false;
