@@ -1,10 +1,9 @@
 import node.*;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class JasminCodeGenerator {
     private StringBuilder completeJasmincode = new StringBuilder();
@@ -13,8 +12,14 @@ public class JasminCodeGenerator {
     private Map<String, Map<String, String>> recordTypes = new HashMap<>();
     private Map<String, String> varRecord = new HashMap<>();
     private Map<String, String> functionParams = new HashMap<>();
+    private List<String> generatedFiles = new ArrayList<>();
+    private String sourceFileName;
 
     private int variableIndex = 0;
+
+    JasminCodeGenerator(String filename) {
+        sourceFileName = filename;
+    }
 
     public static void printRecordTypes(Map<String, Map<String, String>> recordTypes) {
         // Обход внешнего Map (по рекордам)
@@ -35,7 +40,7 @@ public class JasminCodeGenerator {
         }
     }
 
-    public String generate(ProgramNode program) {
+    public List<String> generate(ProgramNode program) throws IOException {
         completeJasmincode.append(".class public Main\n");
         completeJasmincode.append(".super java/lang/Object\n\n");
         completeJasmincode.append(".method public static main([Ljava/lang/String;)V\n");
@@ -49,10 +54,11 @@ public class JasminCodeGenerator {
         completeJasmincode.append(".end method\n");
         completeJasmincode.append(functionCode);
         printRecordTypes(recordTypes);
-        return completeJasmincode.toString();
+        writeToFile("Main.j", completeJasmincode.toString());
+        return generatedFiles;
     }
 
-    private void generateStatement(ASTNode node, StringBuilder jasminCode) {
+    private void generateStatement(ASTNode node, StringBuilder jasminCode) throws IOException {
         if (node instanceof LiteralNode literalNode) {
             generateLiteral(literalNode, jasminCode);
         } else if (node instanceof VarDeclarationNode varNode) {
@@ -88,7 +94,7 @@ public class JasminCodeGenerator {
         }
     }
 
-    private void generateLValue(LValueNode node, StringBuilder jasminCode) {
+    private void generateLValue(LValueNode node, StringBuilder jasminCode) throws IOException {
         generateStatement(node.base, jasminCode);
         if (node.field != null && node.base instanceof IdentifierNode identifierNode) {
             VariableInfo baseInfo = symbolTable.get(identifierNode.name);
@@ -117,10 +123,20 @@ public class JasminCodeGenerator {
         }
     }
 
-    private void generateReturnStatement(ReturnStatementNode node, StringBuilder jasminCode) {
+    private void generateReturnStatement(ReturnStatementNode node, StringBuilder jasminCode) throws IOException {
         if (node.expression != null) {
             generateStatement(node.expression, jasminCode);
-            String returnType = mapTypeToReturnInstruction(node.expression.toString());
+            String returnType;
+            if (node.expression instanceof BinaryOperationNode binaryNode) {
+                if (checkDouble(binaryNode)) {
+                    returnType = mapTypeToReturnInstruction("real");
+                } else {
+                    returnType = mapTypeToReturnInstruction("integer");
+                }
+            } else {
+                returnType = mapTypeToReturnInstruction(node.expression.toString());
+            }
+
             jasminCode.append(returnType).append("\n");
         } else {
             jasminCode.append("return\n");
@@ -132,7 +148,7 @@ public class JasminCodeGenerator {
             case "integer", "boolean" -> "ireturn";
             case "real" -> "dreturn";
             case "string" -> "areturn";
-            default -> "ireturn";
+            default -> "areturn";
 //            default -> throw new UnsupportedOperationException("Unsupported return type: " + typeName);
         };
     }
@@ -142,6 +158,7 @@ public class JasminCodeGenerator {
         for (ParamNode param : node.params) {
             TypeNode test = (TypeNode) param.type;
             descriptor.append(mapTypeToDescriptor(test.typeName));
+            variableIndex++;
         }
         descriptor.append(")");
         if (node.returnType != null) {
@@ -178,7 +195,7 @@ public class JasminCodeGenerator {
         };
     }
 
-    private void generateRoutineDeclaration(RoutineDeclarationNode node, StringBuilder jasminCode) {
+    private void generateRoutineDeclaration(RoutineDeclarationNode node, StringBuilder jasminCode) throws IOException {
         String methodName = node.identifier;
         String methodDescriptor = generateMethodDescriptor(node);
         functionCode.append(".method public static ").append(methodName).append(methodDescriptor).append("\n");
@@ -212,7 +229,7 @@ public class JasminCodeGenerator {
         functionCode.append(".end method\n\n");
     }
 
-    private void generateFunctionCall(FunctionCallNode node, StringBuilder jasminCode) {
+    private void generateFunctionCall(FunctionCallNode node, StringBuilder jasminCode) throws IOException {
         for (ASTNode arg : node.arguments) {
             generateStatement(arg, jasminCode);
         }
@@ -221,7 +238,7 @@ public class JasminCodeGenerator {
                 .append(String.format("%s\n", functionParams.get(node.identifier)));
     }
 
-    private void generateIfStatement(IfStatementNode node, StringBuilder jasminCode) {
+    private void generateIfStatement(IfStatementNode node, StringBuilder jasminCode) throws IOException {
         String endLabel = generateUniqueLabel();
         String elseLabel = generateUniqueLabel();
         BinaryOperationNode binaryOperationNode = (BinaryOperationNode) node.condition;
@@ -262,9 +279,7 @@ public class JasminCodeGenerator {
         return "L" + variableIndex++;
     }
 
-    private void generateBinaryOperation(BinaryOperationNode node, StringBuilder jasminCode) {
-        generateStatement(node.left, jasminCode);
-        generateStatement(node.right, jasminCode);
+    private boolean checkDouble(BinaryOperationNode node) {
         boolean isDouble = false;
         if (node.left instanceof LiteralNode left && left.value instanceof Double) {
             isDouble = true;
@@ -273,7 +288,22 @@ public class JasminCodeGenerator {
             if (symbolTable.containsKey(varName) && symbolTable.get(varName).type.equals("real")) {
                 isDouble = true;
             }
+        } else if (node.left instanceof LValueNode left) {
+            if (left.base instanceof IdentifierNode l) {
+                String varName = l.name;
+                VariableInfo a = symbolTable.get(varName);
+                if (symbolTable.containsKey(varName) && a.type.equals("real")) {
+                    isDouble = true;
+                }
+                String typeName = a.type.substring(1, a.type.length() - 1);
+                String type = recordTypes.get(typeName).get(left.field);
+                if (Objects.equals(type, "D")) {
+                    isDouble = true;
+                }
+            }
+
         }
+
         if (node.right instanceof LiteralNode right && right.value instanceof Double) {
             isDouble = true;
         } else if (node.right instanceof IdentifierNode rightIdentifier) {
@@ -281,7 +311,27 @@ public class JasminCodeGenerator {
             if (symbolTable.containsKey(varName) && symbolTable.get(varName).type.equals("real")) {
                 isDouble = true;
             }
+        } else if (node.right instanceof LValueNode right) {
+            if (right.base instanceof IdentifierNode r) {
+                String varName = r.name;
+                VariableInfo a = symbolTable.get(varName);
+                if (symbolTable.containsKey(varName) && a.type.equals("real")) {
+                    isDouble = true;
+                }
+                String typeName = a.type.substring(1, a.type.length() - 1);
+                String type = recordTypes.get(typeName).get(right.field);
+                if (Objects.equals(type, "D")) {
+                    isDouble = true;
+                }
+            }
         }
+        return isDouble;
+    }
+    private void generateBinaryOperation(BinaryOperationNode node, StringBuilder jasminCode) throws IOException {
+        generateStatement(node.left, jasminCode);
+        generateStatement(node.right, jasminCode);
+        boolean isDouble = checkDouble(node);
+
         switch (node.operator) {
             case PLUS -> jasminCode.append(isDouble ? "dadd\n" : "iadd\n");
             case SLASH -> jasminCode.append(isDouble ? "ddiv\n" : "idiv\n");
@@ -336,7 +386,7 @@ public class JasminCodeGenerator {
         }
     }
 
-    private void generateVarDeclaration(VarDeclarationNode node, StringBuilder jasminCode) {
+    private void generateVarDeclaration(VarDeclarationNode node, StringBuilder jasminCode) throws IOException {
         String varName = node.identifier;
         if (node.type instanceof TypeNode typeNode) {
             String typeName = typeNode.typeName;
@@ -381,7 +431,7 @@ public class JasminCodeGenerator {
         }
     }
 
-    private void generateAssignment(AssignmentNode node, StringBuilder jasminCode) {
+    private void generateAssignment(AssignmentNode node, StringBuilder jasminCode) throws IOException {
         if (node.lvalue instanceof IdentifierNode identifierNode) {
             generateStatement(node.expression, jasminCode);  // Generate code for the right-hand side expression
             String varName = identifierNode.name;
@@ -398,7 +448,8 @@ public class JasminCodeGenerator {
                         jasminCode.append("istore ").append(varInfo.index).append("\n");
                         break;
                     default:
-                        throw new UnsupportedOperationException("Unsupported variable type: " + varInfo.type);
+                        jasminCode.append("astore ").append(varInfo.index).append("\n");
+//                        throw new UnsupportedOperationException("Unsupported variable type: " + varInfo.type);
                 }
             }
         }
@@ -428,7 +479,7 @@ public class JasminCodeGenerator {
         }
     }
 
-    private void generatePrint(PrintStatementNode node, StringBuilder jasminCode) {
+    private void generatePrint(PrintStatementNode node, StringBuilder jasminCode) throws IOException {
         jasminCode.append("getstatic java/lang/System/out Ljava/io/PrintStream;\n");
         generateStatement(node.expression, jasminCode);
         if (node.expression instanceof IdentifierNode identifierNode) {
@@ -441,6 +492,15 @@ public class JasminCodeGenerator {
             }
         } else if (node.expression instanceof LValueNode lValueNode) {
             handleLValuePrint(lValueNode, jasminCode);
+        } else if (node.expression instanceof LiteralNode literalNode) {
+            Object value = literalNode.value;
+            if (value instanceof Integer intValue) {
+                jasminCode.append("invokevirtual java/io/PrintStream/println(I)V\n");
+            } else if (value instanceof Double doubleValue) {
+                jasminCode.append("invokevirtual java/io/PrintStream/println(D)V\n");
+            } else if (value instanceof String stringValue) {
+                jasminCode.append("invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
+            }
         }
     }
 
@@ -490,7 +550,7 @@ public class JasminCodeGenerator {
         }
     }
 
-    private void generateWhileLoop(WhileLoopNode node, StringBuilder jasminCode) {
+    private void generateWhileLoop(WhileLoopNode node, StringBuilder jasminCode) throws IOException {
         String startLabel = generateUniqueLabel();
         String endLabel = generateUniqueLabel();
         jasminCode.append(startLabel).append(":\n");
@@ -555,7 +615,7 @@ public class JasminCodeGenerator {
         return descriptor.toString();
     }
 
-    private void generateRecordDeclaration(RecordDeclarationNode node, StringBuilder mainCode) {
+    private void generateRecordDeclaration(RecordDeclarationNode node, StringBuilder mainCode) throws IOException {
         StringBuilder recordCode = new StringBuilder();
         symbolTable.put(node.identifier, new VariableInfo("L" + node.identifier + ";", -1, false, 0));
         recordCode.append(".class public ").append(node.identifier).append("\n");
@@ -592,10 +652,36 @@ public class JasminCodeGenerator {
         writeToFile(node.identifier + ".j", recordCode.toString());
     }
 
-    private void writeToFile(String fileName, String content) {
-        try (FileWriter writer = new FileWriter(fileName)) {
+    private void writeToFile(String fileName, String content) throws IOException {
+        String path = "output/" + sourceFileName + "/" + fileName;
+        String dirPath = "output/" + sourceFileName;
+
+        File dir = new File(dirPath);
+        if (!dir.exists()) {
+            boolean dirCreated = dir.mkdirs();
+            if (dirCreated) {
+                System.out.println("Directory created: " + dir.getAbsolutePath());
+            } else {
+                System.out.println("Error while creating directory");
+                System.exit(-1);
+            }
+        }
+
+        File file = new File(path);
+        if (!file.exists()) {
+            System.out.println("File not found. Creating new file: " + file.getAbsolutePath());
+            boolean created = file.createNewFile();
+            if (created) {
+                System.out.println("File created.");
+            } else {
+                System.out.println("Error.");
+                System.exit(-1);
+            }
+        }
+        try (FileWriter writer = new FileWriter(path)) {
             writer.write(content);
             System.out.println("Record class generated: " + fileName);
+            generatedFiles.add(fileName);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -617,7 +703,7 @@ public class JasminCodeGenerator {
         };
     }
 
-    private void generateForLoop(ForLoopNode node, StringBuilder jasminCode) {
+    private void generateForLoop(ForLoopNode node, StringBuilder jasminCode) throws IOException {
         String startLabel = generateUniqueLabel();
         String endLabel = generateUniqueLabel();
         generateVarDeclaration(new VarDeclarationNode(

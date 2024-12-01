@@ -45,6 +45,10 @@ public class UnusedVariableRemover {
         } else if (node instanceof WhileLoopNode whileNode) {
             collectUsedVariables(whileNode.condition);
             whileNode.body.forEach(this::collectUsedVariables);
+        } else if (node instanceof ForLoopNode forLoopNode) {
+            collectUsedVariables(forLoopNode.endExpression);
+            collectUsedVariables(forLoopNode.startExpression);
+            forLoopNode.body.forEach(this::collectUsedVariables);
         }
     }
 
