@@ -1,5 +1,5 @@
-var x : integer is 5;
+var x : real is 5.0;
 var y : real;
-y := x + 10.5;
-y := y / 2;
-y := y * 4;
+y := x + 10.0;
+y := y / 2.0;
+y := y * 4.0;
