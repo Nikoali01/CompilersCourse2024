@@ -49,6 +49,8 @@ public class UnusedVariableRemover {
             collectUsedVariables(forLoopNode.endExpression);
             collectUsedVariables(forLoopNode.startExpression);
             forLoopNode.body.forEach(this::collectUsedVariables);
+        } else if (node instanceof LValueNode lValueNode) {
+            collectUsedVariables(lValueNode.base);
         }
     }
 
