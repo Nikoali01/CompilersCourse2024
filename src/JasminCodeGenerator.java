@@ -392,6 +392,7 @@ public class JasminCodeGenerator {
     }
 
     private void generateVarDeclaration(VarDeclarationNode node, StringBuilder jasminCode) throws IOException {
+        System.out.println(1234567890);
         String varName = node.identifier;
         if (node.type instanceof TypeNode typeNode) {
             String typeName = typeNode.typeName;

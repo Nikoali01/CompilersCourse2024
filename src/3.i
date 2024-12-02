@@ -1,12 +1,5 @@
-var temperature: real is 37.1;
-var status: string;
-if temperature > 37.0 then
-  status := "Fever";
-  print(status);
-else
-  status := "Plaki plaki normaldaki";
-  status := "123";
-  status := "456";
-  print(status);
-end;
-print(temperature);
+var x : real is 5.0;
+var y : real;
+y := x + 10.0;
+y := y / 2.0;
+y := y * 4.0;
