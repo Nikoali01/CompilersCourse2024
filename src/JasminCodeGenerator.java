@@ -587,6 +587,8 @@ public class JasminCodeGenerator {
                 jasminCode.append("aload ").append(varInfo.index).append("\n");
             } else if (varInfo.type.equals("integer") || varInfo.type.equals("I")) {
                 jasminCode.append("iload ").append(varInfo.index).append("\n");
+            } else if (varInfo.type.startsWith("L")) { // Handle custom object types
+                jasminCode.append("aload ").append(varInfo.index).append("\n");
             } else if (varInfo.type.endsWith("[]")) { // Handle custom object types
                 jasminCode.append("aload ").append(varInfo.index).append("\n");
             } else {
