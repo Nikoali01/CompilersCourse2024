@@ -129,6 +129,14 @@ public class JasminCodeGenerator {
                 } else {
                     returnType = mapTypeToReturnInstruction("integer");
                 }
+            } else if (node.expression instanceof LValueNode lValueNode) {
+                    // Array element access
+                returnType = "ireturn";
+                if (lValueNode.index instanceof LiteralNode literalNode) {
+                    jasminCode.append("ldc ").append(literalNode.value);
+                    jasminCode.append("\n");
+                    jasminCode.append("iaload\n");
+                }
             } else {
                 returnType = mapTypeToReturnInstruction(node.expression.toString());
             }
