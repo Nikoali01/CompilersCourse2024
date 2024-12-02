@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Locale;
 
 public class Main {
     public static void main(String[] args) throws IOException {
@@ -19,24 +20,25 @@ public class Main {
         String sourceFileName = "src/1.i";
         String inputFileContent = fileToString.getStringFromTheLink(sourceFileName);
         sourceFileName = Paths.get(sourceFileName).getFileName().toString();
-//        String[] command = new String[]{"rm", "-rf", "output/" + sourceFileName};
-//        if (execute(command) != 0) {
-//            System.exit(-1);
-//        }
+
         List<Token> tokens = lexer.lex(inputFileContent);
         Parser parser = new Parser(tokens);
         ProgramNode program = parser.parse();
 
-        ASTOptimizer optimizer = new ASTOptimizer();
-        program = optimizer.optimize(program);
+        //ASTOptimizer optimizer = new ASTOptimizer();
+        //program = optimizer.optimize(program);
         KeyWordUsageChecker keyWordUsageChecker = new KeyWordUsageChecker();
         DeclarationChecker declarationChecker = new DeclarationChecker();
         keyWordUsageChecker.check(program);
-//        declarationChecker.checkDeclarations(program);
+        // declarationChecker.checkDeclarations(program);
         System.out.println(program.statements);
 
         JasminCodeGenerator generator = new JasminCodeGenerator(sourceFileName);
         List<String> generatedFiles = generator.generate(program);
+
+        String osName = System.getProperty("os.name").toLowerCase(Locale.ROOT);
+        boolean isWindows = osName.contains("win");
+
         for (String fileName : generatedFiles) {
             try {
                 String outputPath = "output/" + sourceFileName + "/" + fileName;
@@ -46,19 +48,30 @@ public class Main {
                     System.exit(-1);
                 }
 
-                String[] command = new String[]{
-                        "java", "-jar", "jasmin-2.4/jasmin.jar",
-                        outputPath
+                // Running Jasmin command
+                String[] jasminCommand = new String[]{
+                        "java", "-jar", "jasmin-2.4/jasmin.jar", outputPath
                 };
-                if (execute(command) != 0) {
+                if (execute(jasminCommand) != 0) {
                     System.exit(-1);
                 }
-                String substring = fileName.substring(0, fileName.length() - 2) + ".class";
-                command = new String[]{
-                        "mv", substring,
-                        "output/" + sourceFileName + "/" + substring
-                };
-                if (execute(command) != 0) {
+
+                // Handling .class file movement
+                String classFileName = fileName.substring(0, fileName.length() - 2) + ".class";
+                String destination = "output/" + sourceFileName + "/" + classFileName;
+                String[] moveCommand;
+
+                if (isWindows) {
+                    moveCommand = new String[]{
+                            "cmd", "/c", "move", classFileName, destination.replace("/", "\\")
+                    };
+                } else {
+                    moveCommand = new String[]{
+                            "mv", classFileName, destination
+                    };
+                }
+
+                if (execute(moveCommand) != 0) {
                     System.exit(-1);
                 }
 
@@ -83,8 +96,7 @@ public class Main {
                 System.out.println(line);
             }
 
-            int exitCode = process.waitFor();
-            return exitCode;
+            return process.waitFor();
         } catch (Exception e) {
             e.printStackTrace();
         }

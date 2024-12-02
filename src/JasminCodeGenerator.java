@@ -117,10 +117,6 @@ public class JasminCodeGenerator {
             generateLValue((LValueNode) node.base, jasminCode);
 
         }
-        if (node.index != null) {
-            generateStatement(node.index, jasminCode);
-            jasminCode.append("iaload\n");
-        }
     }
 
     private void generateReturnStatement(ReturnStatementNode node, StringBuilder jasminCode) throws IOException {
@@ -522,8 +518,9 @@ public class JasminCodeGenerator {
         }
     }
 
-    private void handleLValuePrint(LValueNode lValueNode, StringBuilder jasminCode) {
+    private void handleLValuePrint(LValueNode lValueNode, StringBuilder jasminCode) throws IOException {
         if (lValueNode.index == null) {
+            // If it's not an array, resolve the field type and print
             String fieldType = resolveFieldType(lValueNode);
             if ("D".equals(fieldType)) {
                 jasminCode.append("invokevirtual java/io/PrintStream/println(D)V\n");
@@ -533,11 +530,41 @@ public class JasminCodeGenerator {
                 jasminCode.append("invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
             }
         } else {
-            // Печать элемента массива
-            jasminCode.append("iaload\n");  // для массива int, адаптируйте для других типов
-            jasminCode.append("invokevirtual java/io/PrintStream/println(I)V\n");
+            // If it's an array, process the array element
+            if (!(lValueNode.base instanceof IdentifierNode identifierNode)) {
+                throw new IllegalArgumentException("Array base must be an identifier.");
+            }
+
+            String varName = identifierNode.name;
+            VariableInfo varInfo = symbolTable.get(varName);
+
+            if (varInfo == null) {
+                throw new IllegalArgumentException("Variable '" + varName + "' not found in symbolTable.");
+            }
+
+            // Load the array reference
+//            jasminCode.append("aload ").append(varInfo.index).append("\n");
+
+            // Load the index of the array
+            generateStatement(lValueNode.index, jasminCode);
+
+            // Load the element and print based on the array type
+            if (varInfo.type.equals("integer[]")) {
+                jasminCode.append("iaload\n");
+                jasminCode.append("invokevirtual java/io/PrintStream/println(I)V\n");
+            } else if (varInfo.type.equals("double[]")) {
+                jasminCode.append("daload\n");
+                jasminCode.append("invokevirtual java/io/PrintStream/println(D)V\n");
+            } else if (varInfo.type.equals("Ljava/lang/String;[]")) {
+                jasminCode.append("aaload\n");
+                jasminCode.append("invokevirtual java/io/PrintStream/println(Ljava/lang/String;)V\n");
+            } else {
+                throw new UnsupportedOperationException("Unsupported array type: " + varInfo.type);
+            }
         }
     }
+
+
 
     private String resolveFieldType(LValueNode lValueNode) {
         if (lValueNode.base instanceof IdentifierNode identifierNode) {
@@ -560,7 +587,7 @@ public class JasminCodeGenerator {
                 jasminCode.append("aload ").append(varInfo.index).append("\n");
             } else if (varInfo.type.equals("integer") || varInfo.type.equals("I")) {
                 jasminCode.append("iload ").append(varInfo.index).append("\n");
-            } else if (varInfo.type.startsWith("L")) { // Handle custom object types
+            } else if (varInfo.type.endsWith("[]")) { // Handle custom object types
                 jasminCode.append("aload ").append(varInfo.index).append("\n");
             } else {
                 throw new UnsupportedOperationException("Unsupported variable type: " + varInfo.type);
