@@ -327,6 +327,7 @@ public class JasminCodeGenerator {
         }
         return isDouble;
     }
+
     private void generateBinaryOperation(BinaryOperationNode node, StringBuilder jasminCode) throws IOException {
         generateStatement(node.left, jasminCode);
         generateStatement(node.right, jasminCode);
@@ -428,6 +429,21 @@ public class JasminCodeGenerator {
                         throw new UnsupportedOperationException("Unsupported type: " + typeName);
                     }
             }
+        } else if (node.type instanceof ArrayTypeNode arrayNode) {
+            String elementType = arrayNode.name;
+            jasminCode.append("ldc ").append(arrayNode.size).append("\n");
+
+            if ("integer".equals(elementType)) {
+                jasminCode.append("newarray int\n");
+            } else if ("real".equals(elementType)) {
+                jasminCode.append("newarray double\n");
+            } else if ("string".equals(elementType)) {
+                jasminCode.append("anewarray java/lang/String\n");
+            } else {
+                throw new UnsupportedOperationException("Unsupported array type: " + elementType);
+            }
+            jasminCode.append("astore ").append(variableIndex).append("\n");
+            symbolTable.put(varName, new VariableInfo(elementType + "[]", variableIndex++, true, arrayNode.size));
         }
     }
 
@@ -468,13 +484,15 @@ public class JasminCodeGenerator {
                 }
             }
 
-            // Если lvalueNode.index не null, обрабатываем как массив
             if (lvalueNode.index != null) {
-                // Генерация кода для индекса
+                String varName = ((IdentifierNode) lvalueNode.base).name;
+                if (symbolTable.containsKey(varName)) {
+                    VariableInfo varInfo = symbolTable.get(varName);
+                    jasminCode.append("aload ").append(varInfo.index).append("\n");
+                }
                 generateStatement(lvalueNode.index, jasminCode);
-
-                // Пример для целочисленного массива
-                jasminCode.append("iastore\n");  // Для целочисленного массива
+                generateStatement(node.expression, jasminCode);
+                jasminCode.append("iastore\n");
             }
         }
     }

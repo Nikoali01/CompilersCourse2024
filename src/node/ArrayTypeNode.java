@@ -1,8 +1,8 @@
 package node;
 
 public class ArrayTypeNode extends ASTNode {
-    private String name;
-    private int size;
+    public String name;
+    public int size;
 
     public ArrayTypeNode(String name, int size) {
         this.name = name;
