@@ -25,8 +25,8 @@ public class Main {
         Parser parser = new Parser(tokens);
         ProgramNode program = parser.parse();
 
-        //ASTOptimizer optimizer = new ASTOptimizer();
-        //program = optimizer.optimize(program);
+        ASTOptimizer optimizer = new ASTOptimizer();
+        program = optimizer.optimize(program);
         KeyWordUsageChecker keyWordUsageChecker = new KeyWordUsageChecker();
         DeclarationChecker declarationChecker = new DeclarationChecker();
         keyWordUsageChecker.check(program);
