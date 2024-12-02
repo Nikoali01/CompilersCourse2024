@@ -12,7 +12,7 @@ public class DeclarationChecker {
     private final Stack<Set<String>> variableScopes = new Stack<>();
 
     public DeclarationChecker() {
-        variableScopes.push(new HashSet<>()); // Initialize global scope
+        variableScopes.push(new HashSet<>());
     }
 
     public void checkDeclarations(ProgramNode program) {
@@ -78,14 +78,16 @@ public class DeclarationChecker {
 
     private void checkWhileLoop(WhileLoopNode whileLoop) {
         enterNewScope();
-        checkDeclaration(whileLoop.condition); // Check the loop condition
-        checkRoutineBody(whileLoop.body); // Check the loop body
-        exitCurrentScope(); // Exit the scope for the while loop
+        checkDeclaration(whileLoop.condition);
+        checkRoutineBody(whileLoop.body);
+        exitCurrentScope();
     }
 
     private void checkForLoop(ForLoopNode forLoop) {
-        checkRoutineBody(forLoop.body); // Check the loop body
-        exitCurrentScope(); // Exit the scope for the for loop
+        enterNewScope();
+        addVariable(forLoop.identifier);
+        checkRoutineBody(forLoop.body);
+        exitCurrentScope();
     }
 
     private void checkPrintStatement(PrintStatementNode printStatement) {

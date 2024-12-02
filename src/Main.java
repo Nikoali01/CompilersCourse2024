@@ -32,7 +32,7 @@ public class Main {
         KeyWordUsageChecker keyWordUsageChecker = new KeyWordUsageChecker();
         DeclarationChecker declarationChecker = new DeclarationChecker();
         keyWordUsageChecker.check(program);
-//        declarationChecker.checkDeclarations(program);
+        declarationChecker.checkDeclarations(program);
         System.out.println(program.statements);
 
         JasminCodeGenerator generator = new JasminCodeGenerator(sourceFileName);
