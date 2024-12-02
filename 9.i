@@ -12,7 +12,7 @@ routine deposit(acc : Account, amount : real) is
 end;
 
 routine withdraw(acc : Account, amount : real) is
-    if acc.balance >= amount then
+    if acc.balance > amount then
         acc.balance := acc.balance - amount;
     else
         var penalty : real is 50.0;
